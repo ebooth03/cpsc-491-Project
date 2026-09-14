@@ -1,0 +1,174 @@
+/* Reset basic spacing */
+* {
+    box-sizing: border-box;
+}
+
+
+/* Whole page */
+body {
+    margin: 0;
+
+    font-family: Arial, sans-serif;
+
+    background-color: #0f172a;
+
+    color: #e2e8f0;
+}
+
+
+/* Center the scan form */
+.page-container {
+    display: flex;
+
+    justify-content: center;
+
+    padding-top: 60px;
+}
+
+
+/* Main scan box */
+.scan-card {
+    width: 600px;
+
+    background-color: #1e293b;
+
+    padding: 30px;
+
+    border-radius: 10px;
+
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+
+/* Page title */
+h1 {
+    margin-top: 0;
+
+    margin-bottom: 5px;
+}
+
+
+/* Small text under title */
+.subtitle {
+    color: #94a3b8;
+
+    margin-bottom: 30px;
+}
+
+
+/* Each form section */
+.form-group {
+    display: flex;
+
+    flex-direction: column;
+
+    margin-bottom: 20px;
+}
+
+
+/* Labels */
+label {
+    margin-bottom: 8px;
+
+    font-weight: bold;
+}
+
+
+/* Text fields and dropdowns */
+input,
+select {
+    padding: 12px;
+
+    border-radius: 6px;
+
+    border: 1px solid #475569;
+
+    background-color: #0f172a;
+
+    color: white;
+
+    font-size: 16px;
+}
+
+
+/* Highlight selected field */
+input:focus,
+select:focus {
+    outline: none;
+
+    border-color: #3b82f6;
+}
+
+
+/* Button container */
+.button-group {
+    display: flex;
+
+    gap: 10px;
+
+    margin-top: 25px;
+}
+
+
+/* Shared button styling */
+button {
+    padding: 12px 20px;
+
+    border: none;
+
+    border-radius: 6px;
+
+    font-size: 16px;
+
+    cursor: pointer;
+}
+
+
+/* Start Scan */
+#scanButton {
+    background-color: #2563eb;
+
+    color: white;
+}
+
+
+/* Cancel */
+#cancelButton {
+    background-color: #475569;
+
+    color: white;
+}
+
+
+/* Button hover effect */
+button:hover {
+    opacity: 0.9;
+}
+
+
+/* Validation messages */
+#message {
+    margin-top: 20px;
+
+    font-weight: bold;
+}
+
+
+/* Temporary summary */
+#scanSummary {
+    margin-top: 30px;
+
+    padding: 20px;
+
+    background-color: #0f172a;
+
+    border-radius: 6px;
+
+    display: none;
+}
+
+
+/* Summary heading */
+#scanSummary h2 {
+    margin-top: 0;
+}
