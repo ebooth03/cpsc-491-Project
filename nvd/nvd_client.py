@@ -50,9 +50,25 @@ class NVDClient:
             if descriptions:
                 description = descriptions[0].get("value", "")
 
+            metrics = cve.get("metrics", {})
+            cvss_score = None
+            severity = None
+
+            if "cvssMetricV31" in metrics:
+                cvss_data = metrics["cvssMetricV31"][0].get("cvssData", {})
+                cvss_score = cvss_data.get("baseScore")
+                severity = cvss_data.get("baseSeverity")
+
+            elif "cvssMetricV30" in metrics:
+                cvss_data = metrics["cvssMetricV30"][0].get("cvssData", {})
+                cvss_score = cvss_data.get("baseScore")
+                severity = cvss_data.get("baseSeverity")
+
             results.append({
                 "cve_id": cve_id,
-                "description": description
+                "description": description,
+                "cvss_score": cvss_score,
+                "severity": severity
             })
 
         return results
