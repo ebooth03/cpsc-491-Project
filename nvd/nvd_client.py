@@ -64,11 +64,31 @@ class NVDClient:
                 cvss_score = cvss_data.get("baseScore")
                 severity = cvss_data.get("baseSeverity")
 
+            configurations = cve.get("configurations", [])
+            affected_software = []
+
+            for configuration in configurations:
+                nodes = configuration.get("nodes", [])
+
+                for node in nodes:
+                    cpe_matches = node.get("cpeMatch", [])
+
+                    for cpe_match in cpe_matches:
+                        criteria = cpe_match.get("criteria")
+
+                        if criteria:
+                            affected_software.append({
+                                "cpe": criteria,
+                                "version_start": cpe_match.get("versionStartIncluding"),
+                                "version_end": cpe_match.get("versionEndIncluding")
+                            })
+
             results.append({
                 "cve_id": cve_id,
                 "description": description,
                 "cvss_score": cvss_score,
-                "severity": severity
+                "severity": severity,
+                "affected_software": affected_software
             })
 
         return results
