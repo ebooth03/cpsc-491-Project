@@ -100,11 +100,17 @@ class NVDClient:
                         if criteria:
                             affected_software.append({
                                 "cpe": criteria,
-                                "version_start": cpe_match.get(
+                                "version_start_including": cpe_match.get(
                                     "versionStartIncluding"
                                 ),
-                                "version_end": cpe_match.get(
+                                "version_start_excluding": cpe_match.get(
+                                    "versionStartExcluding"
+                                ),
+                                "version_end_including": cpe_match.get(
                                     "versionEndIncluding"
+                                ),
+                                "version_end_excluding": cpe_match.get(
+                                    "versionEndExcluding"
                                 )
                             })
 

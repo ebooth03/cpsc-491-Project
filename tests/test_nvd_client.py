@@ -96,6 +96,44 @@ class TestNVDClient(unittest.TestCase):
 
         self.assertIsNone(result)
 
+    def test_parse_version_boundaries(self):
+        sample_data = {
+            "vulnerabilities": [
+                {
+                    "cve": {
+                        "id": "CVE-TEST-0001",
+                        "descriptions": [],
+                        "configurations": [
+                            {
+                                "nodes": [
+                                    {
+                                        "cpeMatch": [
+                                            {
+                                                "criteria": "cpe:2.3:a:test:software:*:*:*:*:*:*:*:*",
+                                                "versionStartIncluding": "1.0",
+                                                "versionStartExcluding": "2.0",
+                                                "versionEndIncluding": "3.0",
+                                                "versionEndExcluding": "4.0"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+
+        results = self.client.parse_cves(sample_data)
+
+        affected = results[0]["affected_software"][0]
+
+        self.assertEqual(affected["version_start_including"], "1.0")
+        self.assertEqual(affected["version_start_excluding"], "2.0")
+        self.assertEqual(affected["version_end_including"], "3.0")
+        self.assertEqual(affected["version_end_excluding"], "4.0")
+
 
 if __name__ == "__main__":
     unittest.main()
