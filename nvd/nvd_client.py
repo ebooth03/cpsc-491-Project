@@ -32,3 +32,27 @@ class NVDClient:
         response.raise_for_status()
 
         return response.json()
+
+    def parse_cves(self, data):
+        """Extract useful vulnerability information from an NVD API response."""
+
+        vulnerabilities = data.get("vulnerabilities", [])
+        results = []
+
+        for item in vulnerabilities:
+            cve = item.get("cve", {})
+
+            cve_id = cve.get("id")
+
+            descriptions = cve.get("descriptions", [])
+            description = ""
+
+            if descriptions:
+                description = descriptions[0].get("value", "")
+
+            results.append({
+                "cve_id": cve_id,
+                "description": description
+            })
+
+        return results
