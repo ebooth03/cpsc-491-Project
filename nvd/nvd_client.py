@@ -9,13 +9,18 @@ class NVDClient:
     def __init__(self, api_key=None):
         self.api_key = api_key
 
-    def search_cves(self, keyword):
-        """Search the NVD for CVEs matching a keyword."""
+    def search_cves(self, software, version=None):
+        """Search the NVD for CVEs matching software and optionally a version."""
 
         headers = {}
 
         if self.api_key:
             headers["apiKey"] = self.api_key
+
+        keyword = software
+
+        if version:
+            keyword = f"{software} {version}"
 
         params = {
             "keywordSearch": keyword,
@@ -79,8 +84,12 @@ class NVDClient:
                         if criteria:
                             affected_software.append({
                                 "cpe": criteria,
-                                "version_start": cpe_match.get("versionStartIncluding"),
-                                "version_end": cpe_match.get("versionEndIncluding")
+                                "version_start": cpe_match.get(
+                                    "versionStartIncluding"
+                                ),
+                                "version_end": cpe_match.get(
+                                    "versionEndIncluding"
+                                )
                             })
 
             results.append({
