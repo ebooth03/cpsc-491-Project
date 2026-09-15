@@ -27,19 +27,35 @@ class NVDClient:
             "resultsPerPage": 10
         }
 
-        response = requests.get(
-            self.BASE_URL,
-            params=params,
-            headers=headers,
-            timeout=10
-        )
+        try:
+            response = requests.get(
+                self.BASE_URL,
+                params=params,
+                headers=headers,
+                timeout=10
+            )
 
-        response.raise_for_status()
+            response.raise_for_status()
 
-        return response.json()
+            return response.json()
+
+        except requests.exceptions.Timeout:
+            print("NVD API request timed out.")
+            return None
+
+        except requests.exceptions.HTTPError as error:
+            print(f"NVD API returned an HTTP error: {error}")
+            return None
+
+        except requests.exceptions.RequestException as error:
+            print(f"NVD API request failed: {error}")
+            return None
 
     def parse_cves(self, data):
         """Extract useful vulnerability information from an NVD API response."""
+
+        if not data:
+            return []
 
         vulnerabilities = data.get("vulnerabilities", [])
         results = []
