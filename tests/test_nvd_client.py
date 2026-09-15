@@ -1,4 +1,7 @@
 import unittest
+from unittest.mock import patch
+
+import requests
 
 from nvd.nvd_client import NVDClient
 
@@ -66,7 +69,6 @@ class TestNVDClient(unittest.TestCase):
 
     def test_parse_empty_response(self):
         results = self.client.parse_cves(None)
-
         self.assertEqual(results, [])
 
     def test_parse_no_vulnerabilities(self):
@@ -77,6 +79,22 @@ class TestNVDClient(unittest.TestCase):
         results = self.client.parse_cves(sample_data)
 
         self.assertEqual(results, [])
+
+    def test_search_cves_handles_request_error(self):
+        self.client.BASE_URL = "https://invalid-nvd-url.example"
+
+        result = self.client.search_cves("apache", "2.4.49")
+
+        self.assertIsNone(result)
+
+    def test_search_cves_handles_timeout(self):
+        with patch(
+            "nvd.nvd_client.requests.get",
+            side_effect=requests.exceptions.Timeout
+        ):
+            result = self.client.search_cves("apache", "2.4.49")
+
+        self.assertIsNone(result)
 
 
 if __name__ == "__main__":
