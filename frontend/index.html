@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Vulnerability Scanner</title>
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <div class="page-container">
+
+        <div class="scan-card">
+
+            <h1>New Scan</h1>
+
+            <p class="subtitle">
+                Configure the target and scan settings below.
+            </p>
+
+            <form id="scanForm">
+
+                <!-- Target -->
+                <div class="form-group">
+                    <label for="target">
+                        Target IP / Hostname
+                    </label>
+
+                    <input
+                        type="text"
+                        id="target"
+                        placeholder="192.168.1.10"
+                    >
+                </div>
+
+
+                <!-- Port Range -->
+                <div class="form-group">
+                    <label for="ports">
+                        Port Range
+                    </label>
+
+                    <input
+                        type="text"
+                        id="ports"
+                        placeholder="1-1024"
+                    >
+                </div>
+
+
+                <!-- Scan Intensity -->
+                <div class="form-group">
+                    <label for="intensity">
+                        Scan Intensity
+                    </label>
+
+                    <select id="intensity">
+                        <option value="low">
+                            Low
+                        </option>
+
+                        <option value="normal" selected>
+                            Normal
+                        </option>
+
+                        <option value="high">
+                            High
+                        </option>
+                    </select>
+                </div>
+
+
+                <!-- Scan Type -->
+                <div class="form-group">
+                    <label for="scanType">
+                        Scan Type
+                    </label>
+
+                    <select id="scanType">
+
+                        <option value="full">
+                            Full TCP + Service Detection
+                        </option>
+
+                        <option value="quick">
+                            Quick TCP Scan
+                        </option>
+
+                        <option value="stealth">
+                            Stealth Scan
+                        </option>
+
+                    </select>
+                </div>
+
+
+                <!-- Buttons -->
+                <div class="button-group">
+
+                    <button
+                        type="submit"
+                        id="scanButton"
+                    >
+                        Start Scan
+                    </button>
+
+                    <button
+                        type="button"
+                        id="cancelButton"
+                    >
+                        Cancel
+                    </button>
+
+                </div>
+
+
+                <!-- Error / Success Message -->
+                <div id="message"></div>
+
+            </form>
+
+
+            <!-- Temporary mock output -->
+            <div id="scanSummary"></div>
+
+        </div>
+
+    </div>
+
+
+    <script src="app.js"></script>
+
+</body>
+</html>
