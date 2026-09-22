@@ -14,6 +14,13 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Create build version
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          BUILD_VERSION="0.1.${GITHUB_RUN_NUMBER}-${SHORT_SHA}"
+          echo "BUILD_VERSION=$BUILD_VERSION" >> "$GITHUB_ENV"
+          echo "Build version: $BUILD_VERSION"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -37,3 +44,6 @@ jobs:
       - name: Run backend tests
         working-directory: backend
         run: python -m pytest tests -q
+
+      - name: Show build version
+        run: echo "Completed build $BUILD_VERSION"
