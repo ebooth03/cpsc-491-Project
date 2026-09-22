@@ -41,6 +41,16 @@ jobs:
       - name: Install backend dependencies
         run: pip install -r backend/requirements.txt
 
+      - name: Install coverage tool
+        run: pip install pytest-cov  
+
+      - name: Run backend tests with coverage
+        working-directory: backend
+        run: python -m pytest tests -q --cov=app --cov-report=term-missing
+
+      - name: Show build version
+        run: echo "Completed build $BUILD_VERSION"
+
       - name: Run backend tests
         working-directory: backend
         run: python -m pytest tests -q
