@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Create build version
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          BUILD_VERSION="0.1.${GITHUB_RUN_NUMBER}-${SHORT_SHA}"
+          echo "BUILD_VERSION=$BUILD_VERSION" >> "$GITHUB_ENV"
+          echo "Build version: $BUILD_VERSION"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            backend/requirements.txt
+
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run core tests
+        run: python -m pytest tests -q
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Install coverage tool
+        run: pip install pytest-cov  
+
+      - name: Run backend tests with coverage
+        working-directory: backend
+        run: python -m pytest tests -q --cov=app --cov-report=term-missing
+
+      - name: Show build version
+        run: echo "Completed build $BUILD_VERSION"
+
+      - name: Run backend tests
+        working-directory: backend
+        run: python -m pytest tests -q
+
+      - name: Show build version
+        run: echo "Completed build $BUILD_VERSION"
