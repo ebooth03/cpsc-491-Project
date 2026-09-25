@@ -5,84 +5,42 @@ const API_BASE_URL = "http://127.0.0.1:8000";
 // Form elements
 // ==================================================
 
-const scanForm =
-    document.getElementById("scanForm");
-
-const targetInput =
-    document.getElementById("target");
-
-const startPortInput =
-    document.getElementById("startPort");
-
-const endPortInput =
-    document.getElementById("endPort");
-
-const scanDepthSelect =
-    document.getElementById("scanDepth");
-
-const scanTypeSelect =
-    document.getElementById("scanType");
-
-const timeoutInput =
-    document.getElementById("timeout");
-
-const scanButton =
-    document.getElementById("scanButton");
-
-const cancelButton =
-    document.getElementById("cancelButton");
-
-const messageDiv =
-    document.getElementById("message");
+const scanForm = document.getElementById("scanForm");
+const targetInput = document.getElementById("target");
+const startPortInput = document.getElementById("startPort");
+const endPortInput = document.getElementById("endPort");
+const scanDepthSelect = document.getElementById("scanDepth");
+const scanTypeSelect = document.getElementById("scanType");
+const timeoutInput = document.getElementById("timeout");
+const scanButton = document.getElementById("scanButton");
+const cancelButton = document.getElementById("cancelButton");
+const messageDiv = document.getElementById("message");
 
 
 // ==================================================
 // Progress elements
 // ==================================================
 
-const progressSection =
-    document.getElementById("progressSection");
-
-const statusBadge =
-    document.getElementById("statusBadge");
-
-const scanIdText =
-    document.getElementById("scanId");
-
-const progressTarget =
-    document.getElementById("progressTarget");
-
-const progressBar =
-    document.getElementById("progressBar");
-
-const progressPercent =
-    document.getElementById("progressPercent");
-
-const currentHost =
-    document.getElementById("currentHost");
-
-const currentPort =
-    document.getElementById("currentPort");
-
-const currentService =
-    document.getElementById("currentService");
-
-const elapsedTime =
-    document.getElementById("elapsedTime");
-
-const progressMessage =
-    document.getElementById("progressMessage");
+const progressSection = document.getElementById("progressSection");
+const statusBadge = document.getElementById("statusBadge");
+const scanIdText = document.getElementById("scanId");
+const progressTarget = document.getElementById("progressTarget");
+const progressBar = document.getElementById("progressBar");
+const progressPercent = document.getElementById("progressPercent");
+const currentHost = document.getElementById("currentHost");
+const currentPort = document.getElementById("currentPort");
+const currentService = document.getElementById("currentService");
+const elapsedTime = document.getElementById("elapsedTime");
+const progressMessage = document.getElementById("progressMessage");
 
 
 // ==================================================
-// Results elements
+// Results / history elements
 // ==================================================
 
-const resultsSection =
-    document.getElementById("resultsSection");
-
-const resultsDiv =
-    document.getElementById("results");
+const resultsSection = document.getElementById("resultsSection");
+const resultsDiv = document.getElementById("results");
+const scanHistoryDiv = document.getElementById("scanHistory");
 
 
 // Used to stop/start status polling
@@ -90,224 +48,222 @@ let statusPollingInterval = null;
 
 
 // ==================================================
-// START SCAN
+// Start scan
 // ==================================================
 
-scanForm.addEventListener(
-    "submit",
-    async function(event) {
+scanForm.addEventListener("submit", async function (event) {
 
-        event.preventDefault();
+    event.preventDefault();
 
-        clearMessage();
-        hideResults();
+    clearMessage();
+    hideResults();
 
-
-        const target =
-            targetInput.value.trim();
-
-        const startPort =
-            Number(startPortInput.value);
-
-        const endPort =
-            Number(endPortInput.value);
-
-        const scanDepth =
-            scanDepthSelect.value;
-
-        const scanType =
-            scanTypeSelect.value;
-
-        const timeout =
-            Number(timeoutInput.value);
+    const target = targetInput.value.trim();
+    const startPort = Number(startPortInput.value);
+    const endPort = Number(endPortInput.value);
+    const scanDepth = scanDepthSelect.value;
+    const scanType = scanTypeSelect.value;
+    const timeout = Number(timeoutInput.value);
 
 
-        // ------------------------------------------
-        // Validation
-        // ------------------------------------------
+    // ------------------------------
+    // Validation
+    // ------------------------------
 
-        if (target === "") {
+    if (target === "") {
 
-            showError(
-                "Please enter a target."
+        showError("Please enter a target.");
+        return;
+
+    }
+
+
+    if (
+        startPort < 1 ||
+        startPort > 65535 ||
+        endPort < 1 ||
+        endPort > 65535
+    ) {
+
+        showError(
+            "Ports must be between 1 and 65535."
+        );
+
+        return;
+
+    }
+
+
+    if (startPort > endPort) {
+
+        showError(
+            "Start port cannot be greater than end port."
+        );
+
+        return;
+
+    }
+
+
+    if (timeout < 1) {
+
+        showError(
+            "Timeout must be at least 1 second."
+        );
+
+        return;
+
+    }
+
+
+    // ------------------------------
+    // Matches ScanConfiguration
+    // in contracts.py
+    // ------------------------------
+
+    const scanConfig = {
+
+        target: target,
+
+        target_type:
+            determineTargetType(target),
+
+        port_range: {
+            start: startPort,
+            end: endPort
+        },
+
+        scan_type: scanType,
+
+        scan_depth: scanDepth,
+
+        timeout: timeout,
+
+        options: {}
+
+    };
+
+
+    console.log(
+        "Sending scan:",
+        scanConfig
+    );
+
+
+    scanButton.disabled = true;
+
+    showInfo(
+        "Starting scan..."
+    );
+
+
+    try {
+
+        const response = await fetch(
+            `${API_BASE_URL}/scans`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify(scanConfig)
+            }
+        );
+
+
+        if (!response.ok) {
+
+            const errorBody =
+                await response.text();
+
+            throw new Error(
+                `${response.status}: ${errorBody}`
             );
 
-            return;
         }
 
 
-        if (
-            startPort < 1 ||
-            startPort > 65535 ||
-            endPort < 1 ||
-            endPort > 65535
-        ) {
-
-            showError(
-                "Ports must be between 1 and 65535."
-            );
-
-            return;
-        }
-
-
-        if (startPort > endPort) {
-
-            showError(
-                "Start port cannot be greater than end port."
-            );
-
-            return;
-        }
-
-
-        if (timeout < 1) {
-
-            showError(
-                "Timeout must be at least 1 second."
-            );
-
-            return;
-        }
-
-
-        // ------------------------------------------
-        // This matches ScanConfiguration
-        // in contracts.py
-        // ------------------------------------------
-
-        const scanConfig = {
-
-            target: target,
-
-            target_type:
-                determineTargetType(target),
-
-            port_range: {
-
-                start: startPort,
-
-                end: endPort
-
-            },
-
-            scan_type: scanType,
-
-            scan_depth: scanDepth,
-
-            timeout: timeout,
-
-            options: {}
-
-        };
+        const scan =
+            await response.json();
 
 
         console.log(
-            "Sending scan:",
-            scanConfig
+            "Scan created:",
+            scan
         );
 
 
-        scanButton.disabled = true;
-
-
-        showInfo(
-            "Starting scan..."
+        showSuccess(
+            "Scan started successfully."
         );
 
 
-        try {
-
-            // --------------------------------------
-            // POST /scans
-            // --------------------------------------
-
-            const response = await fetch(
-                `${API_BASE_URL}/scans`,
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify(scanConfig)
-                }
-            );
+        showProgressSection(
+            scan.scan_id,
+            target
+        );
 
 
-            if (!response.ok) {
+        /*
+         * Get the current status immediately.
+         *
+         * Right now your mock backend returns
+         * "completed" immediately, so this may
+         * also load the results right away.
+         */
 
-                const errorBody =
-                    await response.text();
-
-                throw new Error(
-                    `${response.status}: ${errorBody}`
-                );
-
-            }
-
-
-            const scan =
-                await response.json();
-
-
-            console.log(
-                "Scan created:",
-                scan
-            );
-
-
-            showSuccess(
-                "Scan started successfully."
-            );
-
-
-            showProgressSection(
-                scan.scan_id,
-                target
-            );
-
-
-            // Get first status immediately
+        const currentStatus =
             await getScanStatus(
                 scan.scan_id
             );
 
 
-            // Continue checking every second
+        /*
+         * Only start polling if the scan
+         * is still running.
+         */
+
+        if (
+            currentStatus !== "completed" &&
+            currentStatus !== "failed" &&
+            currentStatus !== "cancelled"
+        ) {
+
             startStatusPolling(
                 scan.scan_id
             );
 
         }
 
-        catch (error) {
+    }
 
-            console.error(
-                "Could not start scan:",
-                error
-            );
+    catch (error) {
 
-
-            showError(
-                "Could not start scan. Make sure the backend is running."
-            );
+        console.error(
+            "Could not start scan:",
+            error
+        );
 
 
-            scanButton.disabled =
-                false;
+        showError(
+            "Could not start scan. Make sure the backend is running."
+        );
 
-        }
+
+        scanButton.disabled =
+            false;
 
     }
-);
+
+});
 
 
 // ==================================================
-// POLL STATUS
+// Poll status
 // ==================================================
 
 function startStatusPolling(scanId) {
@@ -318,7 +274,7 @@ function startStatusPolling(scanId) {
     statusPollingInterval =
         setInterval(
 
-            async function() {
+            async function () {
 
                 await getScanStatus(
                     scanId
@@ -328,6 +284,25 @@ function startStatusPolling(scanId) {
 
             1000
         );
+
+}
+
+
+function stopStatusPolling() {
+
+    if (
+        statusPollingInterval !== null
+    ) {
+
+        clearInterval(
+            statusPollingInterval
+        );
+
+
+        statusPollingInterval =
+            null;
+
+    }
 
 }
 
@@ -373,9 +348,10 @@ async function getScanStatus(scanId) {
             status.status.toLowerCase();
 
 
-        // ------------------------------------------
-        // Stop checking after scan finishes
-        // ------------------------------------------
+        /*
+         * Stop checking once the scan
+         * reaches a final state.
+         */
 
         if (
             normalizedStatus === "completed" ||
@@ -390,7 +366,11 @@ async function getScanStatus(scanId) {
                 false;
 
 
-            // Retrieve scan results
+            /*
+             * Load results when a scan
+             * completes successfully.
+             */
+
             if (
                 normalizedStatus === "completed"
             ) {
@@ -399,9 +379,22 @@ async function getScanStatus(scanId) {
                     scanId
                 );
 
+                await loadScanHistory();
+
             }
 
+
+            /*
+             * Refresh scan history whenever
+             * a scan reaches a final state.
+             */
+
+            await loadScanHistory();
+
         }
+
+
+        return normalizedStatus;
 
     }
 
@@ -416,13 +409,16 @@ async function getScanStatus(scanId) {
         progressMessage.innerText =
             "Unable to retrieve scan status.";
 
+
+        return "error";
+
     }
 
 }
 
 
 // ==================================================
-// UPDATE PROGRESS DISPLAY
+// Update progress display
 // ==================================================
 
 function updateProgressDisplay(status) {
@@ -437,12 +433,10 @@ function updateProgressDisplay(status) {
         );
 
 
-    // Status text
     statusBadge.innerText =
         status.status;
 
 
-    // Progress bar
     progressBar.style.width =
         `${percent}%`;
 
@@ -451,7 +445,6 @@ function updateProgressDisplay(status) {
         `${percent}%`;
 
 
-    // Current scan information
     currentHost.innerText =
         status.current_host ?? "-";
 
@@ -489,9 +482,9 @@ function updateProgressDisplay(status) {
         "Scan is running.";
 
 
-    // ------------------------------------------
-    // Status badge appearance
-    // ------------------------------------------
+    /*
+     * Update status badge appearance.
+     */
 
     statusBadge.className = "";
 
@@ -553,18 +546,18 @@ async function getScanResults(scanId) {
         }
 
 
-        const results =
+        const result =
             await response.json();
 
 
         console.log(
             "Results:",
-            results
+            result
         );
 
 
         displayResults(
-            results
+            result
         );
 
     }
@@ -587,7 +580,208 @@ async function getScanResults(scanId) {
 
 
 // ==================================================
-// DISPLAY RESULTS
+// Scan history
+// ==================================================
+
+async function loadScanHistory() {
+
+    try {
+
+        const response = await fetch(
+            `${API_BASE_URL}/scans`
+        );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                `History request failed: ${response.status}`
+            );
+
+        }
+
+
+        const scans =
+            await response.json();
+
+
+        displayScanHistory(
+            scans
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Could not load scan history:",
+            error
+        );
+
+
+        scanHistoryDiv.innerHTML = `
+            <p class="empty-results">
+                Could not load scan history.
+            </p>
+        `;
+
+    }
+
+}
+
+
+function displayScanHistory(scans) {
+
+    if (
+        !scans ||
+        scans.length === 0
+    ) {
+
+        scanHistoryDiv.innerHTML = `
+            <p class="empty-results">
+                No scans yet.
+            </p>
+        `;
+
+
+        return;
+
+    }
+
+
+    let html = `
+
+        <div class="table-wrapper">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+                        <th>Scan ID</th>
+                        <th>Target</th>
+                        <th>Status</th>
+                        <th>Started</th>
+                        <th>Action</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+    `;
+
+
+    scans.forEach(
+        function (scan) {
+
+            const startTime =
+                new Date(
+                    scan.start_time
+                ).toLocaleString();
+
+
+            html += `
+
+                <tr>
+
+                    <td>
+                        ${escapeHtml(
+                            scan.scan_id
+                        )}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(
+                            scan.target
+                        )}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(
+                            scan.status
+                        )}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(
+                            startTime
+                        )}
+                    </td>
+
+                    <td>
+
+                        <button
+                            type="button"
+                            class="view-scan-button"
+                            data-scan-id="${escapeHtml(
+                                scan.scan_id
+                            )}"
+                        >
+                            View
+                        </button>
+
+                    </td>
+
+                </tr>
+
+            `;
+
+        }
+    );
+
+
+    html += `
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    `;
+
+
+    scanHistoryDiv.innerHTML =
+        html;
+
+}
+
+
+// ==================================================
+// View a scan from history
+// ==================================================
+
+scanHistoryDiv.addEventListener(
+    "click",
+
+    async function (event) {
+
+        const viewButton =
+            event.target.closest(
+                ".view-scan-button"
+            );
+
+
+        if (!viewButton) {
+            return;
+        }
+
+
+        const scanId =
+            viewButton.dataset.scanId;
+
+
+        await getScanResults(
+            scanId
+        );
+
+    }
+);
+
+
+// ==================================================
+// Display results
 // ==================================================
 
 function displayResults(result) {
@@ -603,17 +797,23 @@ function displayResults(result) {
 
             <p>
                 <strong>Scan ID:</strong>
-                ${escapeHtml(result.scan_id)}
+                ${escapeHtml(
+                    result.scan_id
+                )}
             </p>
 
             <p>
                 <strong>Target:</strong>
-                ${escapeHtml(result.target)}
+                ${escapeHtml(
+                    result.target
+                )}
             </p>
 
             <p>
                 <strong>Status:</strong>
-                ${escapeHtml(result.status)}
+                ${escapeHtml(
+                    result.status
+                )}
             </p>
 
         </div>
@@ -645,14 +845,16 @@ function displayResults(result) {
 
 
     result.hosts.forEach(
-        function(host) {
+        function (host) {
 
             html += `
 
                 <div class="host-result">
 
                     <h3>
-                        ${escapeHtml(host.host)}
+                        ${escapeHtml(
+                            host.host
+                        )}
                     </h3>
 
             `;
@@ -699,7 +901,7 @@ function displayResults(result) {
 
 
                 host.ports.forEach(
-                    function(port) {
+                    function (port) {
 
                         html += `
 
@@ -771,22 +973,29 @@ function displayResults(result) {
 
 
 // ==================================================
-// TARGET TYPE
+// Target type
 // ==================================================
 
 function determineTargetType(target) {
 
-    // CIDR example:
-    // 192.168.1.0/24
+    /*
+     * CIDR example:
+     * 192.168.1.0/24
+     */
 
-    if (target.includes("/")) {
+    if (
+        target.includes("/")
+    ) {
 
         return "cidr";
 
     }
 
 
-    // Simple IPv4 check
+    /*
+     * Simple IPv4 check.
+     */
+
     const ipv4Pattern =
         /^(\d{1,3}\.){3}\d{1,3}$/;
 
@@ -806,7 +1015,7 @@ function determineTargetType(target) {
 
 
 // ==================================================
-// SHOW PROGRESS SECTION
+// Show progress section
 // ==================================================
 
 function showProgressSection(
@@ -866,12 +1075,13 @@ function showProgressSection(
 
 
 // ==================================================
-// CANCEL / RESET
+// Cancel / reset
 // ==================================================
 
 cancelButton.addEventListener(
     "click",
-    function() {
+
+    function () {
 
         stopStatusPolling();
 
@@ -898,36 +1108,14 @@ cancelButton.addEventListener(
 
 
 // ==================================================
-// STOP POLLING
-// ==================================================
-
-function stopStatusPolling() {
-
-    if (
-        statusPollingInterval !== null
-    ) {
-
-        clearInterval(
-            statusPollingInterval
-        );
-
-
-        statusPollingInterval =
-            null;
-
-    }
-
-}
-
-
-// ==================================================
-// MESSAGE HELPERS
+// Message helpers
 // ==================================================
 
 function showError(message) {
 
     messageDiv.className =
         "message-error";
+
 
     messageDiv.innerText =
         message;
@@ -940,6 +1128,7 @@ function showSuccess(message) {
     messageDiv.className =
         "message-success";
 
+
     messageDiv.innerText =
         message;
 
@@ -950,6 +1139,7 @@ function showInfo(message) {
 
     messageDiv.className =
         "message-info";
+
 
     messageDiv.innerText =
         message;
@@ -967,7 +1157,7 @@ function clearMessage() {
 
 
 // ==================================================
-// RESULT HELPERS
+// Result helpers
 // ==================================================
 
 function hideResults() {
@@ -983,7 +1173,7 @@ function hideResults() {
 
 
 // ==================================================
-// ESCAPE BACKEND TEXT
+// Escape backend text
 // ==================================================
 
 function escapeHtml(value) {
@@ -1016,3 +1206,10 @@ function escapeHtml(value) {
         );
 
 }
+
+
+// ==================================================
+// Initial page load
+// ==================================================
+
+loadScanHistory();
