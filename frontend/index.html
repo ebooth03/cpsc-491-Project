@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Vulnerability Scanner</title>
+
+    <link
+        rel="stylesheet"
+        href="styles.css"
+    >
+</head>
+
+
+<body>
+
+    <div class="page-container">
+
+        <div class="scan-card">
+
+            <h1>New Scan</h1>
+
+            <p class="subtitle">
+                Configure a vulnerability scan.
+            </p>
+
+
+            <form id="scanForm">
+
+                <!-- Target -->
+                <div class="form-group">
+
+                    <label for="target">
+                        Target IP / Hostname / CIDR
+                    </label>
+
+                    <input
+                        id="target"
+                        type="text"
+                        placeholder="192.168.1.10"
+                    >
+
+                </div>
+
+
+                <!-- Port range -->
+                <div class="form-group">
+
+                    <label>
+                        Port Range
+                    </label>
+
+                    <div class="port-range">
+
+                        <input
+                            id="startPort"
+                            type="number"
+                            min="1"
+                            max="65535"
+                            value="1"
+                        >
+
+                        <span>to</span>
+
+                        <input
+                            id="endPort"
+                            type="number"
+                            min="1"
+                            max="65535"
+                            value="1024"
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <!-- Scan depth -->
+                <div class="form-group">
+
+                    <label for="scanDepth">
+                        Scan Intensity
+                    </label>
+
+                    <select id="scanDepth">
+
+                        <option value="quick">
+                            Quick
+                        </option>
+
+                        <option
+                            value="standard"
+                            selected
+                        >
+                            Standard
+                        </option>
+
+                        <option value="deep">
+                            Deep
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Scan type -->
+                <div class="form-group">
+
+                    <label for="scanType">
+                        Scan Type
+                    </label>
+
+                    <select id="scanType">
+
+                        <option value="tcp">
+                            TCP Scan
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Timeout -->
+                <div class="form-group">
+
+                    <label for="timeout">
+                        Timeout
+                    </label>
+
+                    <input
+                        id="timeout"
+                        type="number"
+                        min="1"
+                        value="5"
+                    >
+
+                </div>
+
+
+                <!-- Buttons -->
+                <div class="button-group">
+
+                    <button
+                        type="submit"
+                        id="scanButton"
+                    >
+                        Start Scan
+                    </button>
+
+                    <button
+                        type="button"
+                        id="cancelButton"
+                    >
+                        Cancel
+                    </button>
+
+                </div>
+
+
+                <div id="message"></div>
+
+            </form>
+
+
+            <!-- ========================= -->
+            <!-- Scan Progress -->
+            <!-- ========================= -->
+
+            <section
+                id="progressSection"
+                class="progress-section hidden"
+            >
+
+                <div class="progress-header">
+
+                    <h2>Scan Progress</h2>
+
+                    <span
+                        id="statusBadge"
+                        class="status-running"
+                    >
+                        Starting
+                    </span>
+
+                </div>
+
+
+                <div class="scan-info">
+
+                    <p>
+                        <strong>Scan ID:</strong>
+                        <span id="scanId">-</span>
+                    </p>
+
+                    <p>
+                        <strong>Target:</strong>
+                        <span id="progressTarget">-</span>
+                    </p>
+
+                </div>
+
+
+                <div class="progress-track">
+
+                    <div
+                        id="progressBar"
+                        class="progress-bar"
+                    ></div>
+
+                </div>
+
+
+                <div class="progress-number">
+
+                    <span id="progressPercent">
+                        0%
+                    </span>
+
+                </div>
+
+
+                <div class="progress-details">
+
+                    <div>
+                        <span class="detail-label">
+                            Current Host
+                        </span>
+
+                        <span id="currentHost">
+                            -
+                        </span>
+                    </div>
+
+
+                    <div>
+                        <span class="detail-label">
+                            Current Port
+                        </span>
+
+                        <span id="currentPort">
+                            -
+                        </span>
+                    </div>
+
+
+                    <div>
+                        <span class="detail-label">
+                            Current Service
+                        </span>
+
+                        <span id="currentService">
+                            -
+                        </span>
+                    </div>
+
+
+                    <div>
+                        <span class="detail-label">
+                            Elapsed Time
+                        </span>
+
+                        <span>
+                            <span id="elapsedTime">0</span>s
+                        </span>
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="progressMessage"
+                    class="progress-message"
+                >
+                    Waiting for scan...
+                </div>
+
+            </section>
+
+
+            <!-- ========================= -->
+            <!-- Results -->
+            <!-- ========================= -->
+
+            <section
+                id="resultsSection"
+                class="results-section hidden"
+            >
+
+                <h2>Scan Results</h2>
+
+                <div id="results"></div>
+
+            </section>
+
+        </div>
+
+    </div>
+
+
+    <script src="app.js"></script>
+
+</body>
+
+</html>

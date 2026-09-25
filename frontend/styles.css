@@ -1,0 +1,436 @@
+* {
+    box-sizing: border-box;
+}
+
+
+body {
+    margin: 0;
+
+    font-family: Arial, sans-serif;
+
+    background-color: #0f172a;
+
+    color: #e2e8f0;
+}
+
+
+.page-container {
+    display: flex;
+
+    justify-content: center;
+
+    padding: 60px 20px;
+}
+
+
+.scan-card {
+    width: 760px;
+
+    max-width: 100%;
+
+    background-color: #1e293b;
+
+    padding: 30px;
+
+    border-radius: 10px;
+
+    box-shadow:
+        0 4px 15px
+        rgba(0, 0, 0, 0.3);
+}
+
+
+h1,
+h2,
+h3 {
+    margin-top: 0;
+}
+
+
+.subtitle {
+    color: #94a3b8;
+
+    margin-bottom: 30px;
+}
+
+
+/* ==================================
+   Form
+   ================================== */
+
+.form-group {
+    display: flex;
+
+    flex-direction: column;
+
+    margin-bottom: 20px;
+}
+
+
+label {
+    margin-bottom: 8px;
+
+    font-weight: bold;
+}
+
+
+input,
+select {
+    padding: 12px;
+
+    border-radius: 6px;
+
+    border:
+        1px solid #475569;
+
+    background-color: #0f172a;
+
+    color: #ffffff;
+
+    font-size: 16px;
+}
+
+
+input:focus,
+select:focus {
+    outline: none;
+
+    border-color: #3b82f6;
+}
+
+
+.port-range {
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+}
+
+
+.port-range input {
+    width: 100%;
+}
+
+
+/* ==================================
+   Buttons
+   ================================== */
+
+.button-group {
+    display: flex;
+
+    gap: 10px;
+
+    margin-top: 25px;
+}
+
+
+button {
+    padding: 12px 20px;
+
+    border: none;
+
+    border-radius: 6px;
+
+    font-size: 16px;
+
+    cursor: pointer;
+}
+
+
+button:disabled {
+    opacity: 0.5;
+
+    cursor: not-allowed;
+}
+
+
+button:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+
+#scanButton {
+    background-color: #2563eb;
+
+    color: white;
+}
+
+
+#cancelButton {
+    background-color: #475569;
+
+    color: white;
+}
+
+
+/* ==================================
+   Messages
+   ================================== */
+
+#message {
+    margin-top: 20px;
+
+    font-weight: bold;
+}
+
+
+.message-error {
+    color: #ef4444;
+}
+
+
+.message-success {
+    color: #22c55e;
+}
+
+
+.message-info {
+    color: #94a3b8;
+}
+
+
+/* ==================================
+   Progress
+   ================================== */
+
+.progress-section {
+    margin-top: 35px;
+
+    padding: 25px;
+
+    background-color: #0f172a;
+
+    border:
+        1px solid #334155;
+
+    border-radius: 8px;
+}
+
+
+.progress-header {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 20px;
+}
+
+
+#statusBadge {
+    padding: 6px 12px;
+
+    border-radius: 20px;
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+    text-transform: capitalize;
+}
+
+
+.status-running {
+    background-color: #1d4ed8;
+
+    color: white;
+}
+
+
+.status-completed {
+    background-color: #15803d;
+
+    color: white;
+}
+
+
+.status-failed {
+    background-color: #b91c1c;
+
+    color: white;
+}
+
+
+.scan-info {
+    margin-top: 20px;
+}
+
+
+.progress-track {
+    width: 100%;
+
+    height: 18px;
+
+    margin-top: 25px;
+
+    background-color: #334155;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+}
+
+
+.progress-bar {
+    width: 0%;
+
+    height: 100%;
+
+    background-color: #3b82f6;
+
+    border-radius: 20px;
+
+    transition:
+        width 0.4s ease;
+}
+
+
+.progress-number {
+    display: flex;
+
+    justify-content: flex-end;
+
+    margin-top: 8px;
+
+    font-weight: bold;
+}
+
+
+.progress-details {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, 1fr);
+
+    gap: 16px;
+
+    margin-top: 25px;
+}
+
+
+.progress-details > div {
+    display: flex;
+
+    flex-direction: column;
+
+    padding: 15px;
+
+    background-color: #1e293b;
+
+    border-radius: 6px;
+}
+
+
+.detail-label {
+    margin-bottom: 6px;
+
+    color: #94a3b8;
+
+    font-size: 13px;
+
+    text-transform: uppercase;
+}
+
+
+.progress-message {
+    margin-top: 20px;
+
+    color: #94a3b8;
+}
+
+
+/* ==================================
+   Results
+   ================================== */
+
+.results-section {
+    margin-top: 35px;
+
+    padding: 25px;
+
+    background-color: #0f172a;
+
+    border:
+        1px solid #334155;
+
+    border-radius: 8px;
+}
+
+
+.result-summary {
+    margin-bottom: 25px;
+}
+
+
+.host-result {
+    margin-top: 25px;
+}
+
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+
+table {
+    width: 100%;
+
+    border-collapse: collapse;
+
+    margin-top: 15px;
+}
+
+
+th,
+td {
+    padding: 12px;
+
+    border-bottom:
+        1px solid #334155;
+
+    text-align: left;
+}
+
+
+th {
+    color: #94a3b8;
+
+    font-size: 14px;
+}
+
+
+.empty-results {
+    color: #94a3b8;
+}
+
+
+/* ==================================
+   Utility
+   ================================== */
+
+.hidden {
+    display: none;
+}
+
+
+/* ==================================
+   Small screens
+   ================================== */
+
+@media (max-width: 600px) {
+
+    .progress-details {
+        grid-template-columns: 1fr;
+    }
+
+
+    .port-range {
+        flex-direction: column;
+
+        align-items: stretch;
+    }
+
+}
