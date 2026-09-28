@@ -1,10 +1,8 @@
-/* Reset basic spacing */
 * {
     box-sizing: border-box;
 }
 
 
-/* Whole page */
 body {
     margin: 0;
 
@@ -16,19 +14,19 @@ body {
 }
 
 
-/* Center the scan form */
 .page-container {
     display: flex;
 
     justify-content: center;
 
-    padding-top: 60px;
+    padding: 60px 20px;
 }
 
 
-/* Main scan box */
 .scan-card {
-    width: 600px;
+    width: 760px;
+
+    max-width: 100%;
 
     background-color: #1e293b;
 
@@ -36,19 +34,19 @@ body {
 
     border-radius: 10px;
 
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    box-shadow:
+        0 4px 15px
+        rgba(0, 0, 0, 0.3);
 }
 
 
-/* Page title */
-h1 {
+h1,
+h2,
+h3 {
     margin-top: 0;
-
-    margin-bottom: 5px;
 }
 
 
-/* Small text under title */
 .subtitle {
     color: #94a3b8;
 
@@ -56,7 +54,10 @@ h1 {
 }
 
 
-/* Each form section */
+/* ==================================
+   Form
+   ================================== */
+
 .form-group {
     display: flex;
 
@@ -66,7 +67,6 @@ h1 {
 }
 
 
-/* Labels */
 label {
     margin-bottom: 8px;
 
@@ -74,24 +74,23 @@ label {
 }
 
 
-/* Text fields and dropdowns */
 input,
 select {
     padding: 12px;
 
     border-radius: 6px;
 
-    border: 1px solid #475569;
+    border:
+        1px solid #475569;
 
     background-color: #0f172a;
 
-    color: white;
+    color: #ffffff;
 
     font-size: 16px;
 }
 
 
-/* Highlight selected field */
 input:focus,
 select:focus {
     outline: none;
@@ -100,7 +99,24 @@ select:focus {
 }
 
 
-/* Button container */
+.port-range {
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+}
+
+
+.port-range input {
+    width: 100%;
+}
+
+
+/* ==================================
+   Buttons
+   ================================== */
+
 .button-group {
     display: flex;
 
@@ -110,7 +126,6 @@ select:focus {
 }
 
 
-/* Shared button styling */
 button {
     padding: 12px 20px;
 
@@ -124,7 +139,18 @@ button {
 }
 
 
-/* Start Scan */
+button:disabled {
+    opacity: 0.5;
+
+    cursor: not-allowed;
+}
+
+
+button:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+
 #scanButton {
     background-color: #2563eb;
 
@@ -132,7 +158,6 @@ button {
 }
 
 
-/* Cancel */
 #cancelButton {
     background-color: #475569;
 
@@ -140,13 +165,10 @@ button {
 }
 
 
-/* Button hover effect */
-button:hover {
-    opacity: 0.9;
-}
+/* ==================================
+   Messages
+   ================================== */
 
-
-/* Validation messages */
 #message {
     margin-top: 20px;
 
@@ -154,21 +176,261 @@ button:hover {
 }
 
 
-/* Temporary summary */
-#scanSummary {
-    margin-top: 30px;
+.message-error {
+    color: #ef4444;
+}
 
-    padding: 20px;
+
+.message-success {
+    color: #22c55e;
+}
+
+
+.message-info {
+    color: #94a3b8;
+}
+
+
+/* ==================================
+   Progress
+   ================================== */
+
+.progress-section {
+    margin-top: 35px;
+
+    padding: 25px;
 
     background-color: #0f172a;
 
-    border-radius: 6px;
+    border:
+        1px solid #334155;
 
+    border-radius: 8px;
+}
+
+
+.progress-header {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 20px;
+}
+
+
+#statusBadge {
+    padding: 6px 12px;
+
+    border-radius: 20px;
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+    text-transform: capitalize;
+}
+
+
+.status-running {
+    background-color: #1d4ed8;
+
+    color: white;
+}
+
+
+.status-completed {
+    background-color: #15803d;
+
+    color: white;
+}
+
+
+.status-failed {
+    background-color: #b91c1c;
+
+    color: white;
+}
+
+
+.scan-info {
+    margin-top: 20px;
+}
+
+
+.progress-track {
+    width: 100%;
+
+    height: 18px;
+
+    margin-top: 25px;
+
+    background-color: #334155;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+}
+
+
+.progress-bar {
+    width: 0%;
+
+    height: 100%;
+
+    background-color: #3b82f6;
+
+    border-radius: 20px;
+
+    transition:
+        width 0.4s ease;
+}
+
+
+.progress-number {
+    display: flex;
+
+    justify-content: flex-end;
+
+    margin-top: 8px;
+
+    font-weight: bold;
+}
+
+
+.progress-details {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, 1fr);
+
+    gap: 16px;
+
+    margin-top: 25px;
+}
+
+
+.progress-details > div {
+    display: flex;
+
+    flex-direction: column;
+
+    padding: 15px;
+
+    background-color: #1e293b;
+
+    border-radius: 6px;
+}
+
+
+.detail-label {
+    margin-bottom: 6px;
+
+    color: #94a3b8;
+
+    font-size: 13px;
+
+    text-transform: uppercase;
+}
+
+
+.progress-message {
+    margin-top: 20px;
+
+    color: #94a3b8;
+}
+
+
+/* ==================================
+   Results
+   ================================== */
+
+.results-section {
+    margin-top: 35px;
+
+    padding: 25px;
+
+    background-color: #0f172a;
+
+    border:
+        1px solid #334155;
+
+    border-radius: 8px;
+}
+
+
+.result-summary {
+    margin-bottom: 25px;
+}
+
+
+.host-result {
+    margin-top: 25px;
+}
+
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+
+table {
+    width: 100%;
+
+    border-collapse: collapse;
+
+    margin-top: 15px;
+}
+
+
+th,
+td {
+    padding: 12px;
+
+    border-bottom:
+        1px solid #334155;
+
+    text-align: left;
+}
+
+
+th {
+    color: #94a3b8;
+
+    font-size: 14px;
+}
+
+
+.empty-results {
+    color: #94a3b8;
+}
+
+
+/* ==================================
+   Utility
+   ================================== */
+
+.hidden {
     display: none;
 }
 
 
-/* Summary heading */
-#scanSummary h2 {
-    margin-top: 0;
+/* ==================================
+   Small screens
+   ================================== */
+
+@media (max-width: 600px) {
+
+    .progress-details {
+        grid-template-columns: 1fr;
+    }
+
+
+    .port-range {
+        flex-direction: column;
+
+        align-items: stretch;
+    }
+
 }
