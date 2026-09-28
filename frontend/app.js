@@ -1075,7 +1075,8 @@ function showProgressSection(
 
 
 // ==================================================
-// Cancel / reset
+// Cancel / reset, only resets front end
+// Possible TODO: add backend scan cancellation when real scanner gets connected.
 // ==================================================
 
 cancelButton.addEventListener(
