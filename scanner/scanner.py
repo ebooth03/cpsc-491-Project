@@ -1,9 +1,14 @@
+from scan_engine.tcp_scanner import scan_tcp_port
+
+
 class ScannerError(Exception):
     """Raised when a scan cannot be completed."""
     pass
 
 
 class Scanner:
+    """Scans TCP ports on a target host."""
+
     def scan(self, target, ports):
         if not target or not isinstance(target, str):
             raise ValueError("Target must be a non-empty string")
@@ -18,10 +23,12 @@ class Scanner:
         results = []
 
         for port in ports:
+            is_open = scan_tcp_port(target, port)
+
             results.append({
                 "target": target,
                 "port": port,
-                "state": "unknown",
+                "state": "open" if is_open else "closed",
                 "service": None,
             })
 
