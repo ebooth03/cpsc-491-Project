@@ -62,3 +62,33 @@ def test_unknown_service_defaults_to_none(scanner):
     result = scanner.scan("127.0.0.1", [12345])[0]
 
     assert result["service"] is None
+
+def test_scanner_rejects_non_string_target(scanner):
+    with pytest.raises(ValueError):
+        scanner.scan(12345, [80])
+
+
+def test_scanner_rejects_whitespace_target(scanner):
+    with pytest.raises(ValueError):
+        scanner.scan("   ", [80])
+
+
+@pytest.mark.parametrize("port", [
+    None,
+    1.5,
+    True,
+])
+def test_scanner_rejects_additional_invalid_ports(scanner, port):
+    with pytest.raises(ValueError):
+        scanner.scan("127.0.0.1", [port])
+
+
+@pytest.mark.parametrize("port", [
+    1,
+    65535,
+])
+def test_scanner_accepts_boundary_ports(scanner, port):
+    results = scanner.scan("127.0.0.1", [port])
+
+    assert len(results) == 1
+    assert results[0]["port"] == port
