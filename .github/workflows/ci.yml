@@ -42,21 +42,26 @@ jobs:
         run: pip install -r backend/requirements.txt
 
       - name: Install coverage tool
-        run: pip install pytest-cov  
+        run: pip install pytest-cov
 
       - name: Run backend tests with coverage
         working-directory: backend
-        run: python -m pytest tests -q --cov=app --cov-report=term-missing
+        run: |
+          python -m pytest tests -q \
+            --cov=app \
+            --cov-report=term-missing
 
       - name: Show build version
         run: echo "Completed build $BUILD_VERSION"
 
-      - name: Run backend tests
-        working-directory: backend
-        run: python -m pytest tests -q
-
-      - name: Show build version
-        run: echo "Completed build $BUILD_VERSION"
+      - name: Build summary
+        if: always()
+        run: |
+          echo "## CI Build Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Build version: \`$BUILD_VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Branch: \`${GITHUB_REF_NAME}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Event: \`${GITHUB_EVENT_NAME}\`" >> "$GITHUB_STEP_SUMMARY"
 
   frontend-validation:
     runs-on: ubuntu-latest
@@ -78,3 +83,4 @@ jobs:
 
       - name: Check JavaScript syntax
         run: node --check frontend/app.js
+      
