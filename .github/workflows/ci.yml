@@ -57,3 +57,24 @@ jobs:
 
       - name: Show build version
         run: echo "Completed build $BUILD_VERSION"
+
+  frontend-validation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate frontend files
+        run: |
+          test -f frontend/index.html
+          test -f frontend/app.js
+          test -f frontend/styles.css
+
+      - name: Check JavaScript syntax
+        run: node --check frontend/app.js
