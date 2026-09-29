@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  backend-tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,7 +19,6 @@ jobs:
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
           BUILD_VERSION="0.1.${GITHUB_RUN_NUMBER}-${SHORT_SHA}"
           echo "BUILD_VERSION=$BUILD_VERSION" >> "$GITHUB_ENV"
-          echo "Build version: $BUILD_VERSION"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -34,25 +33,30 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install -r backend/requirements.txt
+          pip install pytest-cov
 
       - name: Run core tests
         run: python -m pytest tests -q
 
-      - name: Install backend dependencies
-        run: pip install -r backend/requirements.txt
-
-      - name: Install coverage tool
-        run: pip install pytest-cov
+      - name: Run API contract tests
+        working-directory: backend
+        run: python -m pytest tests/test_scans_api.py -v
 
       - name: Run backend tests with coverage
         working-directory: backend
         run: |
           python -m pytest tests -q \
             --cov=app \
-            --cov-report=term-missing
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=70
 
-      - name: Show build version
-        run: echo "Completed build $BUILD_VERSION"
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ env.BUILD_VERSION }}
+          path: backend/coverage.xml
 
       - name: Build summary
         if: always()
@@ -62,6 +66,7 @@ jobs:
           echo "- Commit: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Branch: \`${GITHUB_REF_NAME}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Event: \`${GITHUB_EVENT_NAME}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Status: \`${{ job.status }}\`" >> "$GITHUB_STEP_SUMMARY"
 
   frontend-validation:
     runs-on: ubuntu-latest
@@ -83,4 +88,3 @@ jobs:
 
       - name: Check JavaScript syntax
         run: node --check frontend/app.js
-      
