@@ -75,6 +75,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Create build version
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          BUILD_VERSION="0.1.${GITHUB_RUN_NUMBER}-${SHORT_SHA}"
+          echo "BUILD_VERSION=$BUILD_VERSION" >> "$GITHUB_ENV"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -88,3 +94,14 @@ jobs:
 
       - name: Check JavaScript syntax
         run: node --check frontend/app.js
+
+      - name: Upload versioned frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-${{ env.BUILD_VERSION }}
+          path: |
+            frontend/index.html
+            frontend/app.js
+            frontend/styles.css
+          if-no-files-found: error
+          retention-days: 30
