@@ -81,9 +81,22 @@ class TestNVDClient(unittest.TestCase):
         self.assertEqual(results, [])
 
     def test_search_cves_handles_request_error(self):
-        self.client.BASE_URL = "https://invalid-nvd-url.example"
+        with patch(
+            "nvd.nvd_client.requests.get",
+            side_effect=requests.exceptions.ConnectionError
+        ):
+            result = self.client.search_cves("apache", "2.4.49")
 
-        result = self.client.search_cves("apache", "2.4.49")
+        self.assertIsNone(result)
+
+    def test_search_cves_handles_http_error(self):
+        with patch("nvd.nvd_client.requests.get") as mock_get:
+            mock_response = mock_get.return_value
+            mock_response.raise_for_status.side_effect = (
+                requests.exceptions.HTTPError("500 Server Error")
+        )
+
+            result = self.client.search_cves("apache", "2.4.49")
 
         self.assertIsNone(result)
 
@@ -133,6 +146,48 @@ class TestNVDClient(unittest.TestCase):
         self.assertEqual(affected["version_start_excluding"], "2.0")
         self.assertEqual(affected["version_end_including"], "3.0")
         self.assertEqual(affected["version_end_excluding"], "4.0")
+
+    def test_parse_cve_with_missing_optional_fields(self):
+        sample_data = {
+            "vulnerabilities": [
+                {
+                    "cve": {
+                        "id": "CVE-TEST-0002"
+                    }
+                }
+            ]
+        }   
+
+        results = self.client.parse_cves(sample_data)
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["cve_id"], "CVE-TEST-0002")
+        self.assertEqual(results[0]["description"], "")
+        self.assertIsNone(results[0]["cvss_score"])
+        self.assertIsNone(results[0]["severity"])
+        self.assertEqual(results[0]["affected_software"], [])
+
+    def test_parse_cve_with_empty_cvss_metrics(self):
+        sample_data = {
+            "vulnerabilities": [
+                {
+                    "cve": {
+                        "id": "CVE-TEST-0003",
+                        "descriptions": [],
+                        "metrics": {
+                            "cvssMetricV31": []
+                        },
+                        "configurations": []
+                    }
+                }
+            ]
+        }
+
+        results = self.client.parse_cves(sample_data)
+
+        self.assertEqual(len(results), 1)
+        self.assertIsNone(results[0]["cvss_score"])
+        self.assertIsNone(results[0]["severity"])
 
 
 if __name__ == "__main__":

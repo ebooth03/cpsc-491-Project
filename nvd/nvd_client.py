@@ -75,12 +75,12 @@ class NVDClient:
             cvss_score = None
             severity = None
 
-            if "cvssMetricV31" in metrics:
+            if metrics.get("cvssMetricV31"):
                 cvss_data = metrics["cvssMetricV31"][0].get("cvssData", {})
                 cvss_score = cvss_data.get("baseScore")
                 severity = cvss_data.get("baseSeverity")
 
-            elif "cvssMetricV30" in metrics:
+            elif metrics.get("cvssMetricV30"):
                 cvss_data = metrics["cvssMetricV30"][0].get("cvssData", {})
                 cvss_score = cvss_data.get("baseScore")
                 severity = cvss_data.get("baseSeverity")
