@@ -36,8 +36,22 @@ jobs:
           pip install -r backend/requirements.txt
           pip install pytest-cov
 
+      - name: Run network scanner tests
+        timeout-minutes: 2
+        run: |
+          python -m pytest tests/test_network_scanner.py -v \
+            --junitxml=network-scanner-results.xml
+
+      - name: Upload network scanner test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: network-scanner-tests-${{ env.BUILD_VERSION }}
+          path: network-scanner-results.xml
+          if-no-files-found: warn
+
       - name: Run core tests
-        run: python -m pytest tests -q
+        run: python -m pytest tests -q --ignore=tests/test_network_scanner.py
 
       - name: Run API contract tests
         working-directory: backend
