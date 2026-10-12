@@ -10,6 +10,10 @@ jobs:
   backend-tests:
     runs-on: ubuntu-latest
 
+    # KAN-88: Allow imports from scan_engine and backend/app
+    env:
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/backend
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -48,6 +52,26 @@ jobs:
         with:
           name: network-scanner-tests-${{ env.BUILD_VERSION }}
           path: network-scanner-results.xml
+          if-no-files-found: warn
+
+      # KAN-88: Execute Sprint 3 scanner and adapter tests
+      - name: Run Sprint 3 scan engine tests
+        run: |
+          python -m pytest \
+            tests/test_validator.py \
+            tests/test_backend_adapter.py \
+            tests/test_engine.py \
+            tests/test_service_detector.py \
+            -v \
+            --junitxml=sprint3-test-results.xml
+
+      # KAN-88: Preserve test results as CI evidence
+      - name: Upload Sprint 3 test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sprint3-tests-${{ env.BUILD_VERSION }}
+          path: sprint3-test-results.xml
           if-no-files-found: warn
 
       - name: Run core tests
