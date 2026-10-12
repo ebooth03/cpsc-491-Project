@@ -127,7 +127,11 @@ test("completed status stops polling and loads matching results", async t => {
     assert.ok(element("statusBadge").classList.contains("status-completed"));
     assert.match(element("results").textContent, /scan-complete/);
     assert.ok(requests.some(url => url.endsWith("/scan-complete/results")));
-    assert.ok(requests.some(url => url.endsWith("/scans")));
+    assert.equal(
+        requests.filter(url => url.endsWith("/scans")).length,
+        1,
+        "Terminal status should refresh history exactly once"
+    );
 });
 
 test("failed and cancelled states stop polling without loading results", async t => {
@@ -155,10 +159,20 @@ test("failed and cancelled states stop polling without loading results", async t
         assert.equal(element("statusBadge").innerText, state);
         assert.equal(element("progressMessage").innerText, `Scan ${state}`);
         assert.equal(requests.some(url => url.endsWith("/results")), false);
-        assert.ok(requests.some(url => url.endsWith("/scans")));
+        assert.equal(
+        requests.filter(url => url.endsWith("/scans")).length,
+        1,
+        "Terminal status should refresh history exactly once"
+    );
 
         if (state === "failed") {
             assert.ok(element("statusBadge").classList.contains("status-failed"));
+        }
+        if (state === "cancelled") {
+            assert.ok(
+                element("statusBadge").classList.contains("status-cancelled"),
+                "Cancelled scans should have a cancelled badge"
+            );
         }
     }
 });
