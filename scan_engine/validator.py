@@ -40,9 +40,22 @@ def validate_port_range(
         True if the port range is valid.
 
     Raises:
-        ValueError: If either port is outside 1-65535 or
-                    start_port is greater than end_port.
+        ValueError: If ports are not integers, outside 1-65535,
+                    or start_port is greater than end_port.
     """
+
+    # Validate port data types
+    if type(start_port) is not int:
+        raise ValueError(
+            f"Start port must be an integer: {start_port}"
+        )
+
+    if type(end_port) is not int:
+        raise ValueError(
+            f"End port must be an integer: {end_port}"
+        )
+
+    # Validate port boundaries
     if not 1 <= start_port <= 65535:
         raise ValueError(
             f"Start port must be between 1 and 65535: {start_port}"
@@ -53,6 +66,7 @@ def validate_port_range(
             f"End port must be between 1 and 65535: {end_port}"
         )
 
+    # Validate port range order
     if start_port > end_port:
         raise ValueError(
             f"Start port cannot be greater than end port: "
