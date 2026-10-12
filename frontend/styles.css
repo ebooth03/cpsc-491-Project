@@ -434,3 +434,7 @@ th {
     }
 
 }
+.status-cancelled {
+    background-color: #475569;
+    color: white;
+}

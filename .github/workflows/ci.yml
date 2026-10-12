@@ -133,6 +133,14 @@ jobs:
       - name: Check JavaScript syntax
         run: node --check frontend/app.js
 
+      - name: Install frontend test dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test
+
       - name: Upload versioned frontend artifact
         uses: actions/upload-artifact@v4
         with:

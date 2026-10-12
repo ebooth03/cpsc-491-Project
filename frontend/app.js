@@ -379,8 +379,6 @@ async function getScanStatus(scanId) {
                     scanId
                 );
 
-                await loadScanHistory();
-
             }
 
 
@@ -512,6 +510,10 @@ function updateProgressDisplay(status) {
         );
 
     }
+    else if (normalizedStatus === "cancelled") {
+        statusBadge.classList.add("status-cancelled");
+    }
+
 
     else {
 
