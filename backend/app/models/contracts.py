@@ -33,16 +33,6 @@ class HostResult(BaseModel):
     ports: list[PortResult] = Field(default_factory=list)
 
 
-class ScanResult(BaseModel):
-    scan_id: str
-    target: str
-    start_time: datetime
-    end_time: datetime | None = None
-    status: str
-    hosts: list[HostResult] = Field(default_factory=list)
-    errors: list[str] = Field(default_factory=list)
-
-
 class VulnerabilityFinding(BaseModel):
     finding_id: str
     scan_id: str
@@ -57,6 +47,17 @@ class VulnerabilityFinding(BaseModel):
     description: str
     remediation: str | None = None
     reference_url: str | None = None
+
+
+class ScanResult(BaseModel):
+    scan_id: str
+    target: str
+    start_time: datetime
+    end_time: datetime | None = None
+    status: str
+    hosts: list[HostResult] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    findings: list[VulnerabilityFinding] = Field(default_factory=list)
 
 
 class ScanStatus(BaseModel):

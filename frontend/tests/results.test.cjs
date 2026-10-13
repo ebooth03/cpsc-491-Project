@@ -155,7 +155,7 @@ test("handles empty and omitted port lists", t => {
         assert.match(results.textContent, /No ports returned\./);
         assert.equal(results.querySelectorAll("table").length, 0);
         assert.equal(
-            results.querySelector("h3").textContent.trim(),
+            results.querySelector(".host-result h3").textContent.trim(),
             "127.0.0.1"
         );
     }
@@ -207,7 +207,7 @@ test("renders backend HTML text literally without creating elements", t => {
     assert.equal(results.querySelectorAll("img").length, 0);
     assert.equal(results.querySelectorAll("[onerror]").length, 0);
     assert.equal(
-        results.querySelector("h3").textContent.trim(),
+        results.querySelector(".host-result h3").textContent.trim(),
         payload
     );
     assert.deepEqual(

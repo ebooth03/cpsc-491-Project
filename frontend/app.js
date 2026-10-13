@@ -823,6 +823,8 @@ function displayResults(result) {
     `;
 
 
+    html += renderVulnerabilityFindings(result.findings);
+
     if (
         !result.hosts ||
         result.hosts.length === 0
@@ -977,6 +979,60 @@ function displayResults(result) {
 // ==================================================
 // Target type
 // ==================================================
+
+
+// Display findings supplied by the backend.
+// An empty list does not establish that a target is vulnerability-free.
+function renderVulnerabilityFindings(findings) {
+    if (!Array.isArray(findings) || findings.length === 0) {
+        return `
+            <section class="vulnerability-findings">
+                <h3>Vulnerability Findings</h3>
+                <p class="empty-findings">
+                    No vulnerability findings were returned.
+                </p>
+            </section>
+        `;
+    }
+
+    const rows = findings.map(finding => `
+        <tr>
+            <td>${escapeHtml(finding.cve_id ?? "-")}</td>
+            <td>${escapeHtml(finding.severity ?? "Unknown")}</td>
+            <td>${escapeHtml(finding.cvss_score ?? "-")}</td>
+            <td>${escapeHtml(finding.host ?? "-")}</td>
+            <td>${escapeHtml(finding.port ?? "-")}</td>
+            <td>${escapeHtml(finding.protocol ?? "-")}</td>
+            <td>${escapeHtml(finding.service ?? "-")}</td>
+            <td>${escapeHtml(finding.detected_version ?? "-")}</td>
+            <td>${escapeHtml(finding.description ?? "-")}</td>
+        </tr>
+    `).join("");
+
+    return `
+        <section class="vulnerability-findings">
+            <h3>Vulnerability Findings</h3>
+            <div class="table-wrapper">
+                <table class="findings-table">
+                    <thead>
+                        <tr>
+                            <th>CVE ID</th>
+                            <th>Severity</th>
+                            <th>CVSS Score</th>
+                            <th>Host</th>
+                            <th>Port</th>
+                            <th>Protocol</th>
+                            <th>Service</th>
+                            <th>Detected Version</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        </section>
+    `;
+}
 
 function determineTargetType(target) {
 
