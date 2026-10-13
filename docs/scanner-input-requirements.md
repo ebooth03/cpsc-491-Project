@@ -92,3 +92,30 @@ The following inputs require confirmation from the team:
 - Input validation expectations are documented.
 - Expected scan output is described.
 - Open design questions are identified for team agreement.
+
+## 8. Backend API Validation — KAN-71
+
+The API accepts IPv4 targets with target_type "ip" and scan_type "tcp".
+Target whitespace is trimmed. Hostname, CIDR, IPv6 and UDP support
+remain future work.
+
+Port boundaries must be integers from 1 through 65535, inclusive.
+The end port must not be less than the start port.
+
+Timeout must be an integer of at least 1 second. This API constraint
+is separate from the scan engine's fractional socket timeout support.
+
+Accepted scan_depth values are quick, standard and deep, matching
+the frontend. These are configuration metadata; distinct scan-depth
+behavior is not yet implemented. Team review should confirm these values.
+
+CVSS scores may be absent; supplied scores must be finite and within
+0–10. Progress must be an integer within 0–100. Current ports must
+be within 1–65535, and elapsed time must be finite and nonnegative.
+
+Scan statuses are queued, running, completed, failed and cancelled.
+
+Invalid scan configurations return HTTP 422 with field-level errors
+and do not create scan records.
+
+Validation: 66 new contract tests; full Python suite: 292 passed.
