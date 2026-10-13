@@ -1,11 +1,3 @@
-from fastapi.testclient import TestClient
-
-from app.main import app
-
-
-client = TestClient(app)
-
-
 SCAN_CONFIG = {
     "target": "192.168.1.10",
     "target_type": "ip",
@@ -20,7 +12,7 @@ SCAN_CONFIG = {
 }
 
 
-def create_test_scan():
+def create_test_scan(client):
     response = client.post(
         "/scans",
         json=SCAN_CONFIG,
@@ -31,15 +23,15 @@ def create_test_scan():
     return response.json()
 
 
-def test_create_scan():
-    scan = create_test_scan()
+def test_create_scan(client):
+    scan = create_test_scan(client)
 
     assert scan["scan_id"].startswith("scan-")
     assert scan["status"] == "completed"
 
 
-def test_list_scans():
-    created_scan = create_test_scan()
+def test_list_scans(client):
+    created_scan = create_test_scan(client)
 
     response = client.get("/scans")
 
@@ -55,8 +47,8 @@ def test_list_scans():
     )
 
 
-def test_get_scan():
-    created_scan = create_test_scan()
+def test_get_scan(client):
+    created_scan = create_test_scan(client)
     scan_id = created_scan["scan_id"]
 
     response = client.get(
@@ -67,8 +59,8 @@ def test_get_scan():
     assert response.json()["scan_id"] == scan_id
 
 
-def test_get_scan_status():
-    created_scan = create_test_scan()
+def test_get_scan_status(client):
+    created_scan = create_test_scan(client)
     scan_id = created_scan["scan_id"]
 
     response = client.get(
@@ -79,8 +71,8 @@ def test_get_scan_status():
     assert response.json()["scan_id"] == scan_id
 
 
-def test_get_scan_results():
-    created_scan = create_test_scan()
+def test_get_scan_results(client):
+    created_scan = create_test_scan(client)
     scan_id = created_scan["scan_id"]
 
     response = client.get(
