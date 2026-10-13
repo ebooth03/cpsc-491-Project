@@ -14,7 +14,7 @@ def scan_id():
         "target_type": "ip",
         "port_range": {"start": 1, "end": 1024},
         "scan_type": "tcp",
-        "scan_depth": "basic",
+        "scan_depth": "standard",
         "timeout": 10,
         "options": {},
     }
