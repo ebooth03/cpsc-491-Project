@@ -1,15 +1,14 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from app.models.contracts import (
-    HostResult,
-    PortResult,
     ScanConfiguration,
     ScanResult,
     ScanStatus,
 )
+from app.services.scan_runner import ScanEngine, get_scan_engine, run_scan
 
 
 router = APIRouter(
@@ -44,6 +43,8 @@ SCAN_STATUSES: dict[str, ScanStatus] = {}
 )
 def create_scan(
     configuration: ScanConfiguration,
+    background_tasks: BackgroundTasks,
+    engine: ScanEngine = Depends(get_scan_engine),
 ) -> ScanStatus:
 
     # Give every scan a unique ID
@@ -51,59 +52,35 @@ def create_scan(
 
     now = datetime.now(timezone.utc)
 
-    # -----------------------------------------------------
-    # TEMPORARY MOCK RESULT
-    #
-    # We are not running the real scanner yet.
-    # However, we use the target entered by the user,
-    # instead of always returning 192.168.1.10.
-    # -----------------------------------------------------
-
-    result = ScanResult(
+    # Record the scan as queued so it appears in history right away.
+    SCAN_RESULTS[scan_id] = ScanResult(
         scan_id=scan_id,
         target=configuration.target,
         start_time=now,
-        end_time=now,
-        status="completed",
-        hosts=[
-            HostResult(
-                host=configuration.target,
-                ports=[
-                    PortResult(
-                        port=22,
-                        protocol="tcp",
-                        state="open",
-                        service="ssh",
-                        version="OpenSSH 9.x",
-                    )
-                ],
-            )
-        ],
-        errors=[],
+        status="queued",
     )
-
-    # -----------------------------------------------------
-    # TEMPORARY MOCK STATUS
-    #
-    # For now scans complete immediately.
-    # Later this will reflect actual scanner progress.
-    # -----------------------------------------------------
 
     status = ScanStatus(
         scan_id=scan_id,
-        status="completed",
-        progress_percent=100,
+        status="queued",
+        progress_percent=0,
         current_host=configuration.target,
-        current_port=22,
-        current_service="ssh",
         elapsed_time=0.0,
-        message="Sample scan completed.",
+        message="Scan queued.",
         updated_at=now,
     )
-
-    # Save scan in memory
-    SCAN_RESULTS[scan_id] = result
     SCAN_STATUSES[scan_id] = status
+
+    # Run the real scan engine after responding (KAN-102). The frontend
+    # polls GET /scans/{scan_id}/status until the scan finishes.
+    background_tasks.add_task(
+        run_scan,
+        scan_id,
+        configuration,
+        engine,
+        SCAN_RESULTS,
+        SCAN_STATUSES,
+    )
 
     return status
 

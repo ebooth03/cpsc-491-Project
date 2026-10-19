@@ -27,7 +27,12 @@ def test_create_scan(client):
     scan = create_test_scan(client)
 
     assert scan["scan_id"].startswith("scan-")
-    assert scan["status"] == "completed"
+
+    # POST responds before the scan runs; the scan then completes in the
+    # background (KAN-102).
+    assert scan["status"] == "queued"
+    status = client.get(f"/scans/{scan['scan_id']}/status").json()
+    assert status["status"] == "completed"
 
 
 def test_list_scans(client):

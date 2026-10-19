@@ -6,8 +6,9 @@ The backend connects the project's scan engine, vulnerability detection
 component, persistence layer, and frontend through shared data contracts
 and API endpoints.
 
-This Sprint 1 version establishes those interfaces only. It does not
-implement the scanner, database, authentication, or CVE/NVD matching.
+`POST /scans` runs the real scan engine in the background. Results are
+kept in memory; the database, authentication, and CVE/NVD matching are
+not implemented yet.
 
 ## Current Scope
 
@@ -18,18 +19,17 @@ Implemented:
 - Configuration structure
 - Repository/data-access placeholder
 - Shared Pydantic data contracts
-- Five initial scan API routes
-- Sample request/response data
-- Basic API tests
+- Five scan API routes with input validation
+- Scan engine integration with background execution (KAN-102)
+- API, contract, and integration tests
 
 Not implemented:
 
-- Scanner integration
-- Database persistence
+- Database persistence (scans are lost when the backend restarts)
 - Authentication/authorization
 - CVE/NVD retrieval or matching
-- Background scan execution
-- Real-time status updates
+- Scan cancellation
+- Live progress percentages (status is queued, running, then final)
 
 ## Project Structure
 
@@ -135,18 +135,29 @@ pytest
 | GET | `/scans/{scan_id}/status` | Retrieve scan status |
 | GET | `/scans/{scan_id}/results` | Retrieve scan results |
 
-## Stub Behavior
+## Scan Execution
 
-All five endpoints currently return fixed sample data.
+`POST /scans` validates the scan configuration, records the scan as
+`queued`, and returns `201` immediately. The scan engine then runs in a
+FastAPI background task (`app/services/scan_runner.py`):
 
-`POST /scans` accepts and validates the shared scan-configuration
-contract, but it does not start a scanner or save anything.
+```text
+queued -> running -> completed | failed
+```
 
-The other endpoints do not query a database.
+Poll `GET /scans/{scan_id}/status` until the status is final, then read
+`GET /scans/{scan_id}/results`. Engine output is converted into the
+shared contracts with the scan engine's `backend_adapter`.
 
-This is intentional. The purpose of this Sprint 1 skeleton is to give
-the scanner, vulnerability-detection, frontend, and testing work a
-stable backend interface to develop against.
+Notes:
+
+- The engine's host discovery probes ports 22, 80 and 443. A host with
+  none of them open is reported as not responding and its port scan is
+  skipped; the result explains this in `errors`.
+- Ports are scanned one at a time. Filtered ports wait the full
+  `timeout`, so large ranges against remote hosts can take a long time.
+- Backend tests replace the engine with a fake (`tests/conftest.py`),
+  so they never touch the network.
 
 ## Next Backend Work
 
