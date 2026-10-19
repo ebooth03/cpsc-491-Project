@@ -125,6 +125,20 @@ http://127.0.0.1:8000/docs
 pytest
 ```
 
+### API schema snapshot
+
+`tests/test_openapi_snapshot.py` compares the API schema with the
+committed `tests/snapshots/openapi.json`. If you change an endpoint,
+a field, or a validation rule, this test fails until you regenerate the
+snapshot and commit it in the same pull request:
+
+```bash
+UPDATE_OPENAPI_SNAPSHOT=1 python -m pytest tests/test_openapi_snapshot.py
+```
+
+Review the snapshot diff before committing. It shows exactly how the
+contract the frontend depends on is changing.
+
 ## Initial API
 
 | Method | Endpoint | Description |
