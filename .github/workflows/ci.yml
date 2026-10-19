@@ -81,6 +81,12 @@ jobs:
         working-directory: backend
         run: python -m pytest tests/test_scans_api.py -v
 
+      # KAN-72: Fail the build when the API schema changes without the
+      # committed snapshot being updated in the same PR.
+      - name: Check API schema against OpenAPI snapshot
+        working-directory: backend
+        run: python -m pytest tests/test_openapi_snapshot.py -v
+
       - name: Run backend tests with coverage
         working-directory: backend
         run: |
