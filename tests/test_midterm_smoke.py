@@ -77,6 +77,23 @@ def test_invalid_scan_rejected():
     assert response.status_code == 422
 
 
+def test_oversized_scan_rejected():
+    payload = {
+        "target": "127.0.0.1",
+        "target_type": "ip",
+        "port_range": {"start": 1, "end": 1025},
+        "scan_type": "tcp",
+        "scan_depth": "standard",
+        "timeout": 10,
+        "options": {},
+    }
+
+    response = client.post("/scans", json=payload)
+
+    assert response.status_code == 422
+
+
+
 def test_unknown_scan_returns_404():
     response = client.get("/scans/nonexistent-id")
     assert response.status_code == 404

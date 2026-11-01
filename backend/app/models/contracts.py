@@ -1,8 +1,18 @@
 from datetime import datetime
 from typing import Any, Literal
 import ipaddress
+import os
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
+
+MAX_PORTS_PER_SCAN = int(os.getenv("MAX_PORTS_PER_SCAN", "1024"))
+
+if not 1 <= MAX_PORTS_PER_SCAN <= 65535:
+    raise ValueError(
+        "MAX_PORTS_PER_SCAN must be between 1 and 65535."
+    )
+
+
 
 
 class PortRange(BaseModel):
@@ -11,10 +21,27 @@ class PortRange(BaseModel):
 
     @field_validator("end")
     @classmethod
-    def validate_order(cls, value: int, info: ValidationInfo) -> int:
+    def validate_order(
+        cls, value: int, info: ValidationInfo
+    ) -> int:
         start = info.data.get("start")
-        if start is not None and value < start:
-            raise ValueError("End port must be greater than or equal to start port.")
+
+        if start is not None:
+            # Reject reversed port ranges
+            if value < start:
+                raise ValueError(
+                    "End port must be greater than or equal to start port."
+                )
+
+            # KAN-103: Enforce maximum scan size
+            port_count = value - start + 1
+
+            if port_count > MAX_PORTS_PER_SCAN:
+                raise ValueError(
+                    f"Scan exceeds maximum allowed port count "
+                    f"of {MAX_PORTS_PER_SCAN}."
+                )
+
         return value
 
 
