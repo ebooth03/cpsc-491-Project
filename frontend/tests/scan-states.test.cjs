@@ -238,3 +238,70 @@ test("cancel resets the frontend and stops polling without a backend request", a
     assert.equal(element("message").innerText, "");
     assert.equal(requests, 0);
 });
+
+test("unchecked authorization blocks submission without a request", async t => {
+    const { window, element } = await setup(t);
+    const checkbox = element("authorizationAcknowledged");
+    assert.equal(checkbox.checked, false);
+    assert.equal(checkbox.required, true);
+
+    let requests = 0;
+    window.fetch = async () => {
+        requests++;
+        return { ok: true, json: async () => [] };
+    };
+
+    element("target").value = "192.0.2.10";
+    element("scanForm").dispatchEvent(
+        new window.Event("submit", { bubbles: true, cancelable: true })
+    );
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.equal(requests, 0);
+    assert.equal(
+        element("message").innerText,
+        "Confirm that you have permission to scan this target."
+    );
+});
+
+test("checked authorization sends an explicit Boolean acknowledgement", async t => {
+    const { window, element } = await setup(t);
+    const posts = [];
+
+    element("target").value = "192.0.2.10";
+    element("startPort").value = "20";
+    element("endPort").value = "25";
+    element("timeout").value = "5";
+    element("scanType").value = "tcp";
+    element("scanDepth").value = "standard";
+    element("authorizationAcknowledged").checked = true;
+
+    window.fetch = async (url, options = {}) => {
+        if (options.method === "POST") {
+            posts.push(JSON.parse(options.body));
+            return {
+                ok: true,
+                json: async () => ({
+                    scan_id: "scan-authorized",
+                    status: "queued"
+                })
+            };
+        }
+        return {
+            ok: true,
+            json: async () => url.endsWith("/status")
+                ? { status: "running", progress_percent: 0 }
+                : []
+        };
+    };
+
+    element("scanForm").dispatchEvent(
+        new window.Event("submit", { bubbles: true, cancelable: true })
+    );
+    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.equal(posts.length, 1);
+    assert.equal(posts[0].target, "192.0.2.10");
+    assert.equal(posts[0].options.authorization_acknowledged, true);
+});
