@@ -76,7 +76,7 @@ class ScanConfiguration(BaseModel):
         value: dict[str, Any]
     ) -> dict[str, Any]:
 
-        if value:
+        if set(value) - {"authorization_acknowledged"}:
             raise ValueError(
                 "Unsupported scan options. "
                 "No additional scan options are currently supported."

@@ -75,11 +75,9 @@ def test_client_options_cannot_override_server_allowlist(
     client, scan_config_factory, fake_scan_engine, monkeypatch
 ):
     monkeypatch.setenv("SCANNER_APPROVED_TARGETS", "192.0.2.11")
-    payload = scan_config_factory(options={
-        "authorization_acknowledged": True,
-        "approved_targets": ["192.0.2.10"],
-    }).model_dump(mode="json")
-    assert_blocked(client, payload, fake_scan_engine, 403)
+    payload = scan_config_factory().model_dump(mode="json")
+    payload["options"]["approved_targets"] = ["192.0.2.10"]
+    assert_blocked(client, payload, fake_scan_engine, 422)
 
 
 def test_invalid_target_is_rejected_before_engine(

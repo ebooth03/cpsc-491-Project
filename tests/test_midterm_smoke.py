@@ -47,7 +47,7 @@ def scan_id(monkeypatch):
 
     response = client.post("/scans", json=payload)
 
-    assert response.status_code == 201
+    assert response.status_code == 201, response.text
     assert response.json().get("scan_id")
 
     return response.json()["scan_id"]
