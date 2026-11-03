@@ -9,14 +9,14 @@ def scanner():
 
 
 def test_scanner_accepts_valid_target(scanner):
-    results = scanner.scan("127.0.0.1", [80])
+    results = scanner.scan("127.0.0.1", [80], authorization_acknowledged=True)
 
     assert len(results) == 1
     assert results[0]["target"] == "127.0.0.1"
 
 
 def test_scanner_accepts_multiple_ports(scanner):
-    results = scanner.scan("127.0.0.1", [22, 80, 443])
+    results = scanner.scan("127.0.0.1", [22, 80, 443], authorization_acknowledged=True)
 
     assert len(results) == 3
     assert [result["port"] for result in results] == [22, 80, 443]
@@ -24,17 +24,17 @@ def test_scanner_accepts_multiple_ports(scanner):
 
 def test_scanner_rejects_empty_target(scanner):
     with pytest.raises(ValueError):
-        scanner.scan("", [80])
+        scanner.scan("", [80], authorization_acknowledged=True)
 
 
 def test_scanner_rejects_none_target(scanner):
     with pytest.raises(ValueError):
-        scanner.scan(None, [80])
+        scanner.scan(None, [80], authorization_acknowledged=True)
 
 
 def test_scanner_rejects_empty_ports(scanner):
     with pytest.raises(ValueError):
-        scanner.scan("127.0.0.1", [])
+        scanner.scan("127.0.0.1", [], authorization_acknowledged=True)
 
 
 @pytest.mark.parametrize("port", [
@@ -46,11 +46,11 @@ def test_scanner_rejects_empty_ports(scanner):
 ])
 def test_scanner_rejects_invalid_ports(scanner, port):
     with pytest.raises(ValueError):
-        scanner.scan("127.0.0.1", [port])
+        scanner.scan("127.0.0.1", [port], authorization_acknowledged=True)
 
 
 def test_scan_result_contains_expected_fields(scanner):
-    result = scanner.scan("127.0.0.1", [443])[0]
+    result = scanner.scan("127.0.0.1", [443], authorization_acknowledged=True)[0]
 
     assert "target" in result
     assert "port" in result
@@ -59,18 +59,18 @@ def test_scan_result_contains_expected_fields(scanner):
 
 
 def test_unknown_service_defaults_to_none(scanner):
-    result = scanner.scan("127.0.0.1", [12345])[0]
+    result = scanner.scan("127.0.0.1", [12345], authorization_acknowledged=True)[0]
 
     assert result["service"] is None
 
 def test_scanner_rejects_non_string_target(scanner):
     with pytest.raises(ValueError):
-        scanner.scan(12345, [80])
+        scanner.scan(12345, [80], authorization_acknowledged=True)
 
 
 def test_scanner_rejects_whitespace_target(scanner):
     with pytest.raises(ValueError):
-        scanner.scan("   ", [80])
+        scanner.scan("   ", [80], authorization_acknowledged=True)
 
 
 @pytest.mark.parametrize("port", [
@@ -80,7 +80,7 @@ def test_scanner_rejects_whitespace_target(scanner):
 ])
 def test_scanner_rejects_additional_invalid_ports(scanner, port):
     with pytest.raises(ValueError):
-        scanner.scan("127.0.0.1", [port])
+        scanner.scan("127.0.0.1", [port], authorization_acknowledged=True)
 
 
 @pytest.mark.parametrize("port", [
@@ -88,7 +88,14 @@ def test_scanner_rejects_additional_invalid_ports(scanner, port):
     65535,
 ])
 def test_scanner_accepts_boundary_ports(scanner, port):
-    results = scanner.scan("127.0.0.1", [port])
+    results = scanner.scan("127.0.0.1", [port], authorization_acknowledged=True)
 
     assert len(results) == 1
     assert results[0]["port"] == port
+
+import pytest as authorization_pytest
+
+
+@authorization_pytest.fixture(autouse=True)
+def approved_scan_targets(monkeypatch):
+    monkeypatch.setenv("SCANNER_APPROVED_TARGETS", "127.0.0.1")

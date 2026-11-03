@@ -1,39 +1,23 @@
-"""Restrict API scans to explicitly acknowledged, approved IPv4 targets."""
-
-import ipaddress
-import os
+"""Translate shared scan authorization failures into API responses."""
 
 from fastapi import HTTPException
 
 from app.models.contracts import ScanConfiguration
+from scan_engine.authorization import (
+    ScanAllowlistConfigurationError,
+    ScanAuthorizationError,
+    require_authorized_target as check_authorized_target,
+)
 
 
 def require_authorized_target(configuration: ScanConfiguration) -> None:
     """Reject requests before scan storage or background work is created."""
-    if configuration.options.get("authorization_acknowledged") is not True:
-        raise HTTPException(
-            status_code=403,
-            detail="Explicit scan authorization acknowledgement is required.",
-        )
-
-    raw = os.environ.get("SCANNER_APPROVED_TARGETS", "")
-    entries = [entry.strip() for entry in raw.split(",")]
-    if not raw.strip() or any(not entry for entry in entries):
-        raise HTTPException(
-            status_code=503,
-            detail="Approved scan targets are not configured correctly.",
-        )
-
     try:
-        approved = {str(ipaddress.IPv4Address(entry)) for entry in entries}
-    except ipaddress.AddressValueError:
-        raise HTTPException(
-            status_code=503,
-            detail="Approved scan targets are not configured correctly.",
-        ) from None
-
-    if configuration.target not in approved:
-        raise HTTPException(
-            status_code=403,
-            detail="Target is not approved for scanning.",
+        check_authorized_target(
+            configuration.target,
+            configuration.options.get("authorization_acknowledged"),
         )
+    except ScanAllowlistConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ScanAuthorizationError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc

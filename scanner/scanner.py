@@ -1,3 +1,4 @@
+from scan_engine.authorization import require_authorized_target
 from scan_engine.tcp_scanner import scan_tcp_port
 
 
@@ -9,7 +10,7 @@ class ScannerError(Exception):
 class Scanner:
     """Scans TCP ports on a target host."""
 
-    def scan(self, target, ports):
+    def scan(self, target, ports, *, authorization_acknowledged=False):
         if not isinstance(target, str) or not target.strip():
             raise ValueError("Target must be a non-empty string")
 
@@ -23,6 +24,8 @@ class Scanner:
                 or not 1 <= port <= 65535
             ):
                 raise ValueError(f"Invalid port: {port}")
+
+        require_authorized_target(target, authorization_acknowledged)
 
         results = []
 
