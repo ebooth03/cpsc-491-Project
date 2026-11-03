@@ -284,9 +284,12 @@ test("checked authorization sends an explicit Boolean acknowledgement", async t 
     element("scanType").value = "tcp";
     element("scanDepth").value = "standard";
     element("authorizationAcknowledged").checked = true;
+    element("scanAccessToken").value = "test-scan-token";
 
     window.fetch = async (url, options = {}) => {
         if (options.method === "POST") {
+            assert.equal(options.headers.Authorization, "Bearer test-scan-token");
+            assert.ok(!options.body.includes("test-scan-token"));
             posts.push(JSON.parse(options.body));
             return {
                 ok: true,
