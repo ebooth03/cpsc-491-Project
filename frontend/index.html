@@ -9,6 +9,19 @@
         content="width=device-width, initial-scale=1.0"
     >
 
+    <!--
+        Content-Security-Policy (defense in depth for Control 4).
+        Everything is denied by default. Scripts and styles load only from
+        this site, and the page may call only the local API. Images, fonts,
+        plugins, <base> changes and form posts are all blocked.
+        If API_BASE_URL in app.js changes, update connect-src to match
+        (a test in tests/payloads.test.cjs fails if they drift apart).
+    -->
+    <meta
+        http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src http://127.0.0.1:8000; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    >
+
     <title>Vulnerability Scanner</title>
 
     <link
