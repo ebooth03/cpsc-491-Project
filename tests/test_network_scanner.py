@@ -1,3 +1,4 @@
+
 """
 Automated CI tests for the network scanning functionality (KAN-47).
 
@@ -25,6 +26,7 @@ import pytest
 from scan_engine.engine import ScanEngine
 from scan_engine.host_discovery import discover_host
 from scan_engine.tcp_scanner import scan_tcp_port, scan_tcp_range
+from scan_engine.validator import MAX_PORTS_PER_SCAN
 from scanner.scanner import Scanner
 
 
@@ -189,7 +191,10 @@ class TestScanTcpRangeMocked:
         with patch("scan_engine.tcp_scanner.socket.socket", factory):
             scan_tcp_range("10.0.0.5", 100, 104)
 
-        probed = [s.connect_ex.call_args.args[0][1] for s in created]
+        probed = [
+            s.connect_ex.call_args.args[0][1]
+            for s in created
+        ]
 
         assert probed == [100, 101, 102, 103, 104]
 
@@ -225,11 +230,16 @@ class TestScanTcpRangeMocked:
         for sock in created:
             sock.settimeout.assert_called_once_with(0.75)
 
-    def test_reversed_range_scans_nothing(self):
+    # KAN-103: Reject reversed ranges before scanning.
+    def test_reversed_range_is_rejected(self):
         factory, created = make_fake_socket({})
 
         with patch("scan_engine.tcp_scanner.socket.socket", factory):
-            assert scan_tcp_range("10.0.0.5", 100, 50) == []
+            with pytest.raises(
+                ValueError,
+                match="Start port cannot be greater than end port"
+            ):
+                scan_tcp_range("10.0.0.5", 100, 50)
 
         assert created == []
 
@@ -238,6 +248,27 @@ class TestScanTcpRangeMocked:
 
         with patch("scan_engine.tcp_scanner.socket.socket", factory):
             assert scan_tcp_range("10.0.0.5", 1, 10) == [2, 5, 9]
+
+    # KAN-103: Verify direct calls cannot bypass scan-size limits.
+    def test_oversized_range_rejected_before_network(self):
+        if MAX_PORTS_PER_SCAN == 65535:
+            pytest.skip("No larger valid TCP range exists")
+
+        factory, created = make_fake_socket({})
+
+        with patch("scan_engine.tcp_scanner.socket.socket", factory):
+            with pytest.raises(
+                ValueError,
+                match="maximum allowed port count"
+            ):
+                scan_tcp_range(
+                    "10.0.0.5",
+                    1,
+                    MAX_PORTS_PER_SCAN + 1,
+                )
+
+        # No sockets should be created for an oversized scan.
+        assert created == []
 
 
 # =========================================================
@@ -271,7 +302,10 @@ class TestDiscoverHostMocked:
         with patch("scan_engine.host_discovery.socket.socket", factory):
             discover_host("10.0.0.5")
 
-        probed = [s.connect_ex.call_args.args[0][1] for s in created]
+        probed = [
+            s.connect_ex.call_args.args[0][1]
+            for s in created
+        ]
 
         assert probed == [22, 80, 443]
 
@@ -281,7 +315,10 @@ class TestDiscoverHostMocked:
         with patch("scan_engine.host_discovery.socket.socket", factory):
             assert discover_host("10.0.0.5") == "reachable"
 
-        probed = [s.connect_ex.call_args.args[0][1] for s in created]
+        probed = [
+            s.connect_ex.call_args.args[0][1]
+            for s in created
+        ]
 
         assert probed == [22, 80]
 
@@ -322,10 +359,14 @@ class TestDiscoverHostMocked:
 class TestLoopbackScanning:
 
     def test_detects_listening_port_as_open(self, open_local_port):
-        assert scan_tcp_port(LOOPBACK, open_local_port, FAST_TIMEOUT) is True
+        assert scan_tcp_port(
+            LOOPBACK, open_local_port, FAST_TIMEOUT
+        ) is True
 
     def test_detects_non_listening_port_as_closed(self, closed_local_port):
-        assert scan_tcp_port(LOOPBACK, closed_local_port, FAST_TIMEOUT) is False
+        assert scan_tcp_port(
+            LOOPBACK, closed_local_port, FAST_TIMEOUT
+        ) is False
 
     def test_range_finds_listening_port(self, open_local_port):
         open_ports = scan_tcp_range(
@@ -365,9 +406,10 @@ class TestLoopbackScanning:
         assert states[closed_local_port] == "closed"
 
     def test_unresolvable_hostname_reported_closed(self):
-        # .invalid is reserved (RFC 2606) and never resolves, so this
-        # exercises the error path without touching a real host.
-        assert scan_tcp_port("scanner-test.invalid", 80, FAST_TIMEOUT) is False
+        # .invalid is reserved (RFC 2606).
+        assert scan_tcp_port(
+            "scanner-test.invalid", 80, FAST_TIMEOUT
+        ) is False
 
 
 # =========================================================
@@ -426,19 +468,32 @@ class TestScanEngineLoopback:
 
 class TestScanEngineErrorHandling:
 
-    @patch("scan_engine.engine.discover_host", side_effect=OSError("no route"))
+    @patch(
+        "scan_engine.engine.discover_host",
+        side_effect=OSError("no route")
+    )
     def test_network_error_in_discovery_returns_failed(self, _mock):
-        result = ScanEngine().scan("10.0.0.5", 1, 10, timeout=FAST_TIMEOUT)
+        result = ScanEngine().scan(
+            "10.0.0.5", 1, 10, timeout=FAST_TIMEOUT
+        )
 
         assert result.status == "failed"
         assert result.error.startswith("Network error:")
         assert "no route" in result.error
         assert result.hosts == []
 
-    @patch("scan_engine.engine.scan_tcp_range", side_effect=OSError("reset"))
-    @patch("scan_engine.engine.discover_host", return_value="reachable")
+    @patch(
+        "scan_engine.engine.scan_tcp_range",
+        side_effect=OSError("reset")
+    )
+    @patch(
+        "scan_engine.engine.discover_host",
+        return_value="reachable"
+    )
     def test_network_error_during_port_scan_returns_failed(self, _d, _s):
-        result = ScanEngine().scan("10.0.0.5", 1, 10, timeout=FAST_TIMEOUT)
+        result = ScanEngine().scan(
+            "10.0.0.5", 1, 10, timeout=FAST_TIMEOUT
+        )
 
         assert result.status == "failed"
         assert "Network error" in result.error
@@ -446,8 +501,12 @@ class TestScanEngineErrorHandling:
 
     @patch("scan_engine.engine.scan_tcp_range")
     @patch("scan_engine.engine.discover_host")
-    def test_invalid_config_never_touches_network(self, mock_discover, mock_scan):
-        result = ScanEngine().scan("10.0.0.5", 1, 10, timeout=0)
+    def test_invalid_config_never_touches_network(
+        self, mock_discover, mock_scan
+    ):
+        result = ScanEngine().scan(
+            "10.0.0.5", 1, 10, timeout=0
+        )
 
         assert result.status == "failed"
         mock_discover.assert_not_called()
@@ -455,22 +514,31 @@ class TestScanEngineErrorHandling:
 
     @patch("scan_engine.engine.scan_tcp_range")
     @patch("scan_engine.engine.discover_host", return_value="unknown")
-    def test_unreachable_host_skips_port_scan(self, _mock_discover, mock_scan):
-        result = ScanEngine().scan("10.0.0.5", 1, 10, timeout=FAST_TIMEOUT)
+    def test_unreachable_host_skips_port_scan(
+        self, _mock_discover, mock_scan
+    ):
+        result = ScanEngine().scan(
+            "10.0.0.5", 1, 10, timeout=FAST_TIMEOUT
+        )
 
         assert result.status == "completed"
         assert result.hosts[0].state == "unknown"
         mock_scan.assert_not_called()
 
-    @pytest.mark.parametrize("target", [
-        "localhost",
-        "example.com",
-        "10.0.0",
-        "::1",
-        "",
-    ])
+    @pytest.mark.parametrize(
+        "target",
+        [
+            "localhost",
+            "example.com",
+            "10.0.0",
+            "::1",
+            "",
+        ],
+    )
     def test_non_ipv4_targets_fail_validation(self, target):
-        result = ScanEngine().scan(target, 1, 10, timeout=FAST_TIMEOUT)
+        result = ScanEngine().scan(
+            target, 1, 10, timeout=FAST_TIMEOUT
+        )
 
         assert result.status == "failed"
         assert result.error is not None

@@ -8,6 +8,7 @@ from app.models.contracts import (
     ScanResult,
     ScanStatus,
 )
+from app.services.scan_authorization import require_authorized_target
 from app.services.scan_runner import ScanEngine, get_scan_engine, run_scan
 
 
@@ -46,6 +47,8 @@ def create_scan(
     background_tasks: BackgroundTasks,
     engine: ScanEngine = Depends(get_scan_engine),
 ) -> ScanStatus:
+
+    require_authorized_target(configuration)
 
     # Give every scan a unique ID
     scan_id = f"scan-{uuid4().hex[:8]}"

@@ -8,7 +8,33 @@ client = TestClient(app)
 
 
 @pytest.fixture
-def scan_id():
+def scan_id(monkeypatch):
+    from types import SimpleNamespace
+    from app.services.scan_runner import get_scan_engine
+    from scan_engine.models import (
+        HostResult as EngineHostResult,
+        ScanResult as EngineScanResult,
+    )
+
+    monkeypatch.setenv("SCANNER_APPROVED_TARGETS", "127.0.0.1")
+
+    def fake_scan(**kwargs):
+        return EngineScanResult(
+            target=kwargs["target"],
+            status="completed",
+            hosts=[EngineHostResult(
+                address=kwargs["target"],
+                state="reachable",
+                services=[],
+            )],
+        )
+
+    monkeypatch.setitem(
+        app.dependency_overrides,
+        get_scan_engine,
+        lambda: SimpleNamespace(scan=fake_scan),
+    )
+
     payload = {
         "target": "127.0.0.1",
         "target_type": "ip",
@@ -16,12 +42,12 @@ def scan_id():
         "scan_type": "tcp",
         "scan_depth": "standard",
         "timeout": 10,
-        "options": {},
+        "options": {"authorization_acknowledged": True},
     }
 
     response = client.post("/scans", json=payload)
 
-    assert response.status_code == 201
+    assert response.status_code == 201, response.text
     assert response.json().get("scan_id")
 
     return response.json()["scan_id"]
@@ -75,6 +101,23 @@ def test_invalid_scan_rejected():
     )
 
     assert response.status_code == 422
+
+
+def test_oversized_scan_rejected():
+    payload = {
+        "target": "127.0.0.1",
+        "target_type": "ip",
+        "port_range": {"start": 1, "end": 1025},
+        "scan_type": "tcp",
+        "scan_depth": "standard",
+        "timeout": 10,
+        "options": {},
+    }
+
+    response = client.post("/scans", json=payload)
+
+    assert response.status_code == 422
+
 
 
 def test_unknown_scan_returns_404():
