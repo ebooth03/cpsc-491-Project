@@ -1,15 +1,14 @@
+
 """
 Runs the scan engine for a backend scan and stores the outcome (KAN-102).
 
-The scan engine (scan_engine/) is owned by the scan engine developer and
-returns its own dataclasses. This module is the backend side of that
-boundary: it calls the engine, converts its output into the shared
-backend contracts, and records scan status as the scan progresses:
+The scan engine returns its own dataclasses. This module calls the
+engine, converts its output into backend contracts, and records scan
+status as execution progresses:
 
     queued -> running -> completed | failed
 
-Conversion of individual ports reuses the scan engine's own
-backend_adapter, so both components agree on one mapping.
+KAN-105 adds concurrency reservation cleanup.
 """
 
 import logging
@@ -17,7 +16,6 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from app.services.scan_limiter import ScanLimiter
 
 from app.models.contracts import (
     HostResult,
@@ -26,13 +24,16 @@ from app.models.contracts import (
     ScanResult,
     ScanStatus,
 )
+from app.services.scan_limiter import ScanLimiter
 
-# The scan engine package lives at the repository root, outside backend/.
-# Make it importable when the API is started from backend/ as the README
-# describes. Appended (not prepended) so it never shadows backend modules.
+
+# Make the repository-level scan engine importable when
+# the API is started from the backend directory.
 _REPO_ROOT = Path(__file__).resolve().parents[3]
+
 if str(_REPO_ROOT) not in sys.path:
     sys.path.append(str(_REPO_ROOT))
+
 
 from scan_engine.backend_adapter import (  # noqa: E402
     service_result_to_backend_port,
@@ -47,13 +48,16 @@ UNREACHABLE_NOTE = (
     "Host {host} did not respond on the discovery ports (22, 80, 443); "
     "the port scan was skipped."
 )
+
 UNEXPECTED_ERROR_MESSAGE = (
     "The scan engine stopped unexpectedly. See the server log for details."
 )
+
 NETWORK_ERROR_MESSAGE = (
     "Network error: the target could not be reached. "
     "See the server log for details."
 )
+
 ENGINE_FAILURE_MESSAGE = (
     "The scan engine could not complete the scan. "
     "See the server log for details."
@@ -71,14 +75,12 @@ def _now() -> datetime:
 
 def public_engine_error(raw_error: str | None) -> str:
     """
-    Map a scan engine error to a message that is safe to show clients.
-
-    Raw engine errors can include operating-system details, so they are
-    logged on the server (see run_scan) and replaced with a controlled
-    message here.
+    Convert raw engine errors into safe public messages.
     """
+
     if raw_error and raw_error.startswith("Network error"):
         return NETWORK_ERROR_MESSAGE
+
     return ENGINE_FAILURE_MESSAGE
 
 
@@ -89,23 +91,41 @@ def convert_engine_result(
     start_time: datetime,
     end_time: datetime,
 ) -> ScanResult:
-    """Convert a scan engine ScanResult into the backend ScanResult."""
+    """Convert scan-engine results into backend contracts."""
 
     hosts = []
     notes = []
 
     for engine_host in engine_result.hosts:
+
         ports = [
-            PortResult(**service_result_to_backend_port(service))
+            PortResult(
+                **service_result_to_backend_port(service)
+            )
             for service in engine_host.services
         ]
-        hosts.append(HostResult(host=engine_host.address, ports=ports))
+
+        hosts.append(
+            HostResult(
+                host=engine_host.address,
+                ports=ports,
+            )
+        )
 
         if engine_host.state != "reachable":
-            notes.append(UNREACHABLE_NOTE.format(host=engine_host.address))
+            notes.append(
+                UNREACHABLE_NOTE.format(
+                    host=engine_host.address
+                )
+            )
 
     failed = engine_result.status == "failed"
-    errors = [public_engine_error(engine_result.error)] if failed else []
+
+    errors = (
+        [public_engine_error(engine_result.error)]
+        if failed
+        else []
+    )
 
     return ScanResult(
         scan_id=scan_id,
@@ -119,14 +139,23 @@ def convert_engine_result(
 
 
 def _summary_message(result: ScanResult) -> str:
-    if result.status == "failed":
-        return result.errors[0] if result.errors else ENGINE_FAILURE_MESSAGE
 
-    open_ports = sum(len(host.ports) for host in result.hosts)
+    if result.status == "failed":
+        return (
+            result.errors[0]
+            if result.errors
+            else ENGINE_FAILURE_MESSAGE
+        )
+
+    open_ports = sum(
+        len(host.ports)
+        for host in result.hosts
+    )
+
     if result.errors:
         return f"Scan completed. {result.errors[0]}"
-    return f"Scan completed: {open_ports} open port(s) found."
 
+    return f"Scan completed: {open_ports} open port(s) found."
 
 
 def run_scan(
@@ -138,19 +167,20 @@ def run_scan(
     limiter: ScanLimiter | None = None,
 ) -> None:
     """
-    Execute a scan and record its results and status.
+    Execute a scan and record its outcome.
 
-    KAN-105: Release the concurrency reservation after
-    execution, including successful scans and failures.
+    KAN-105: Always release the concurrency reservation,
+    including successful and failed execution.
 
-    The limiter parameter is optional to preserve
-    compatibility with existing direct run_scan() calls.
+    The optional limiter preserves compatibility with
+    existing direct run_scan() calls.
     """
 
     try:
         start_time = results[scan_id].start_time
         started = time.monotonic()
 
+        # Update scan status to running.
         statuses[scan_id] = ScanStatus(
             scan_id=scan_id,
             status="running",
@@ -170,7 +200,15 @@ def run_scan(
         )
 
         try:
+            # Preserve the authorization acknowledgment
+            # introduced in the latest main branch.
             engine_result = engine.scan(
+                authorization_acknowledged=(
+                    configuration.options.get(
+                        "authorization_acknowledged",
+                        False,
+                    )
+                ),
                 target=configuration.target,
                 start_port=configuration.port_range.start,
                 end_port=configuration.port_range.end,
@@ -193,7 +231,7 @@ def run_scan(
                 )
 
         except Exception:
-            # Log internal details without exposing them to clients.
+            # Record unexpected engine failures safely.
             logger.exception(
                 "Scan %s failed in the scan engine.",
                 scan_id,
@@ -208,7 +246,7 @@ def run_scan(
                 errors=[UNEXPECTED_ERROR_MESSAGE],
             )
 
-        # Publish final results before final status.
+        # Publish the final result.
         results[scan_id] = result
 
         statuses[scan_id] = ScanStatus(
@@ -219,13 +257,14 @@ def run_scan(
             ),
             current_host=configuration.target,
             elapsed_time=round(
-                time.monotonic() - started, 3
+                time.monotonic() - started,
+                3,
             ),
             message=_summary_message(result),
             updated_at=_now(),
         )
 
     finally:
-        # KAN-105: Always release reserved capacity.
+        # KAN-105: Release capacity regardless of outcome.
         if limiter is not None:
             limiter.release(scan_id)

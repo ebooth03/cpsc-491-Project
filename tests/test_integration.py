@@ -7,7 +7,7 @@ from vulnerability.matcher import VulnerabilityMatcher
 class FakeScanner:
     """Predictable scanner used for integration tests."""
 
-    def scan(self, target, ports):
+    def scan(self, target, ports, *, authorization_acknowledged=False):
         results = []
 
         for port in ports:

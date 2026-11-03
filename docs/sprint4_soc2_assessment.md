@@ -70,3 +70,36 @@ The existing in-memory scan history is not persistent across backend restarts.
 **Locally Verified – CI/CD verification pending for KAN-105 and KAN-106.**
 
 The selected input-validation and resource-limit controls passed the executed local security tests. The assessment does not establish full SOC 2 compliance.
+
+
+### Updated Automated Test Execution – KAN-105 and KAN-106
+
+Following integration of the latest main branch, additional authentication and target-authorization controls required updates to the security test environment.
+
+I configured an approved loopback target for automated testing and updated scan requests to include explicit authorization acknowledgment. This preserved the new authorization requirements while allowing the concurrency and resource-limit tests to execute.
+
+**Dedicated KAN-105 and KAN-106 Tests**
+
+Command: `PYTHONPATH=backend:. python -m pytest backend/tests/test_scan_concurrency.py backend/tests/test_soc2_security_controls.py -v`
+
+Result: **30 passed, 1 warning.**
+
+**Backend Regression Suite**
+
+Command: `PYTHONPATH=backend:. python -m pytest backend/tests -q`
+
+Result: **193 passed, 2 expected failures, 1 warning.**
+
+**Full Project Regression Suite**
+
+Command: `PYTHONPATH=backend:. python -m pytest -q`
+
+Result: **411 passed, 2 expected failures, 1 warning.**
+
+**Additional Security Verification**
+
+A new integration test confirmed that unauthorized scan requests return HTTP 403 without consuming concurrency capacity, invoking the scan engine, or creating scan records.
+
+**Assessment Status:** Locally Verified – GitHub Actions CI/CD verification pending.
+
+**Remaining Limitations:** The concurrency limiter operates within a single backend process. Multiple backend workers or instances would require shared coordination to enforce a global concurrency limit.

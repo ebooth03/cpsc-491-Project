@@ -1,3 +1,4 @@
+
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -8,6 +9,8 @@ from app.models.contracts import (
     ScanResult,
     ScanStatus,
 )
+from app.services.scan_authentication import require_scan_requester
+from app.services.scan_authorization import require_authorized_target
 from app.services.scan_runner import ScanEngine, get_scan_engine, run_scan
 from app.services.scan_limiter import scan_limiter
 
@@ -21,12 +24,6 @@ router = APIRouter(
 # =========================================================
 # Temporary in-memory storage
 # =========================================================
-#
-# This is NOT a database.
-# Scan history will be kept while the backend is running,
-# but it will disappear when the backend restarts.
-#
-# Later, this can be replaced by ScanRepository/database code.
 
 SCAN_RESULTS: dict[str, ScanResult] = {}
 SCAN_STATUSES: dict[str, ScanStatus] = {}
@@ -37,7 +34,6 @@ SCAN_STATUSES: dict[str, ScanStatus] = {}
 # Create a new scan
 # =========================================================
 
-
 @router.post(
     "",
     response_model=ScanStatus,
@@ -47,13 +43,20 @@ def create_scan(
     configuration: ScanConfiguration,
     background_tasks: BackgroundTasks,
     engine: ScanEngine = Depends(get_scan_engine),
+    requester_id: str | None = Depends(require_scan_requester),
 ) -> ScanStatus:
 
-    # Give every scan a unique ID.
+    # Verify target authorization before reserving capacity.
+    require_authorized_target(
+        configuration,
+        requester_id=requester_id,
+    )
+
+    # Generate a unique scan ID.
     scan_id = f"scan-{uuid4().hex[:8]}"
 
-    # KAN-105: Reserve a slot before accepting the request.
-    # The reservation covers both queued and running scans.
+    # KAN-105: Reserve capacity before accepting the scan.
+    # The limit includes queued and running scans.
     if not scan_limiter.try_acquire(scan_id):
         raise HTTPException(
             status_code=429,
@@ -84,8 +87,7 @@ def create_scan(
 
         SCAN_STATUSES[scan_id] = status
 
-        # Pass the limiter to the background runner so the
-        # reservation can be released when execution finishes.
+        # Schedule the scan and pass its reservation limiter.
         background_tasks.add_task(
             run_scan,
             scan_id,
@@ -99,7 +101,7 @@ def create_scan(
         return status
 
     except Exception:
-        # Release the reservation if setup or scheduling fails.
+        # Release capacity if scan setup or scheduling fails.
         SCAN_RESULTS.pop(scan_id, None)
         SCAN_STATUSES.pop(scan_id, None)
         scan_limiter.release(scan_id)
@@ -117,10 +119,8 @@ def create_scan(
 )
 def list_scans() -> list[ScanResult]:
 
-    # Convert dictionary values into a list
     scans = list(SCAN_RESULTS.values())
 
-    # Sort newest first
     scans.sort(
         key=lambda scan: scan.start_time,
         reverse=True,

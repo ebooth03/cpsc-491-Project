@@ -32,6 +32,19 @@
 
 
             <form id="scanForm">
+        <div>
+            <label for="scanAccessToken">Scan access token (if required)</label>
+            <input id="scanAccessToken" type="password" autocomplete="off"
+                   spellcheck="false" autocapitalize="none">
+        </div>
+
+    <div class="form-group">
+        <label for="authorizationAcknowledged">
+            <input type="checkbox" id="authorizationAcknowledged" required>
+            I confirm that I have permission to scan this target.
+        </label>
+    </div>
+
 
                 <!-- Target -->
                 <div class="form-group">

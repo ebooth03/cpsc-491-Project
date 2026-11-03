@@ -3,17 +3,26 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { JSDOM } = require("jsdom");
+const { createInstrumenter } = require("istanbul-lib-instrument");
+const { saveCoverage } = require("./coverage-helper.cjs");
 
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-const app = fs.readFileSync(path.join(root, "app.js"), "utf8");
+const instrumenter = createInstrumenter({coverageVariable: "__coverage__", compact: false});
+const app = instrumenter.instrumentSync(fs.readFileSync(path.join(root, "app.js"), "utf8"), "app.js");
 
 async function setup(t) {
     const dom = new JSDOM(html, {
         url: "http://localhost/",
         runScripts: "outside-only"
     });
-    t.after(() => dom.window.close());
+    t.after(() => {
+    try {
+        saveCoverage(dom.window);
+    } finally {
+        dom.window.close();
+    }
+});
 
     const window = dom.window;
     const timers = new Map();
@@ -237,4 +246,74 @@ test("cancel resets the frontend and stops polling without a backend request", a
     assert.equal(element("results").innerHTML, "");
     assert.equal(element("message").innerText, "");
     assert.equal(requests, 0);
+});
+
+test("unchecked authorization blocks submission without a request", async t => {
+    const { window, element } = await setup(t);
+    const checkbox = element("authorizationAcknowledged");
+    assert.equal(checkbox.checked, false);
+    assert.equal(checkbox.required, true);
+
+    let requests = 0;
+    window.fetch = async () => {
+        requests++;
+        return { ok: true, json: async () => [] };
+    };
+
+    element("target").value = "192.0.2.10";
+    element("scanForm").dispatchEvent(
+        new window.Event("submit", { bubbles: true, cancelable: true })
+    );
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.equal(requests, 0);
+    assert.equal(
+        element("message").innerText,
+        "Confirm that you have permission to scan this target."
+    );
+});
+
+test("checked authorization sends an explicit Boolean acknowledgement", async t => {
+    const { window, element } = await setup(t);
+    const posts = [];
+
+    element("target").value = "192.0.2.10";
+    element("startPort").value = "20";
+    element("endPort").value = "25";
+    element("timeout").value = "5";
+    element("scanType").value = "tcp";
+    element("scanDepth").value = "standard";
+    element("authorizationAcknowledged").checked = true;
+    element("scanAccessToken").value = "test-scan-token";
+
+    window.fetch = async (url, options = {}) => {
+        if (options.method === "POST") {
+            assert.equal(options.headers.Authorization, "Bearer test-scan-token");
+            assert.ok(!options.body.includes("test-scan-token"));
+            posts.push(JSON.parse(options.body));
+            return {
+                ok: true,
+                json: async () => ({
+                    scan_id: "scan-authorized",
+                    status: "queued"
+                })
+            };
+        }
+        return {
+            ok: true,
+            json: async () => url.endsWith("/status")
+                ? { status: "running", progress_percent: 0 }
+                : []
+        };
+    };
+
+    element("scanForm").dispatchEvent(
+        new window.Event("submit", { bubbles: true, cancelable: true })
+    );
+    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.equal(posts.length, 1);
+    assert.equal(posts[0].target, "192.0.2.10");
+    assert.equal(posts[0].options.authorization_acknowledged, true);
 });

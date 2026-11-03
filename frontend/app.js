@@ -7,6 +7,7 @@ const API_BASE_URL = "http://127.0.0.1:8000";
 
 const scanForm = document.getElementById("scanForm");
 const targetInput = document.getElementById("target");
+const authorizationInput = document.getElementById("authorizationAcknowledged");
 const startPortInput = document.getElementById("startPort");
 const endPortInput = document.getElementById("endPort");
 const scanDepthSelect = document.getElementById("scanDepth");
@@ -69,6 +70,11 @@ scanForm.addEventListener("submit", async function (event) {
     // ------------------------------
     // Validation
     // ------------------------------
+
+    if (!authorizationInput.checked) {
+        showError("Confirm that you have permission to scan this target.");
+        return;
+    }
 
     if (target === "") {
 
@@ -139,7 +145,9 @@ scanForm.addEventListener("submit", async function (event) {
 
         timeout: timeout,
 
-        options: {}
+        options: {
+            authorization_acknowledged: authorizationInput.checked
+        }
 
     };
 
@@ -166,7 +174,10 @@ scanForm.addEventListener("submit", async function (event) {
 
                 headers: {
                     "Content-Type":
-                        "application/json"
+                        "application/json",
+                ...((token) => token ? { Authorization: `Bearer ${token}` } : {})(
+                    document.getElementById("scanAccessToken")?.value.trim()
+                )
                 },
 
                 body:

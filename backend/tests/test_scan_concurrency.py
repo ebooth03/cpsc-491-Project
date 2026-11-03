@@ -14,8 +14,17 @@ import pytest
 from app.routes import scans as scans_routes
 from app.services.scan_limiter import ScanLimiter
 
+pytestmark = pytest.mark.usefixtures(
+    "approved_local_scan_target"
+)
+
+
 
 def valid_payload():
+    """
+    Return a valid, authorization-aware scan request
+    for KAN-105 concurrency testing.
+    """
     return {
         "target": "127.0.0.1",
         "target_type": "ip",
@@ -23,8 +32,11 @@ def valid_payload():
         "scan_type": "tcp",
         "scan_depth": "standard",
         "timeout": 5,
-        "options": {},
+        "options": {
+            "authorization_acknowledged": True
+        },
     }
+
 
 
 # --------------------------------------------------

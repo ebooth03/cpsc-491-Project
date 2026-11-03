@@ -10,7 +10,7 @@ def test_mock_scan_returns_empty_findings(client):
         "scan_type": "tcp",
         "scan_depth": "standard",
         "timeout": 5,
-        "options": {},
+        "options": {"authorization_acknowledged": True},
     })
     assert response.status_code == 201
     scan_id = response.json()["scan_id"]

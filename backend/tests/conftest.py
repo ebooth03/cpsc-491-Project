@@ -50,7 +50,10 @@ class FakeScanEngine:
         self.error = None
         self.on_scan = None
 
-    def scan(self, target, start_port, end_port, timeout=0.5):
+    def scan(
+        self, target, start_port, end_port, timeout=0.5,
+        *, authorization_acknowledged=False,
+    ):
         self.calls.append({
             "target": target,
             "start_port": start_port,
@@ -102,7 +105,7 @@ def scan_config_factory():
             "scan_type": "tcp",
             "scan_depth": "standard",
             "timeout": 5,
-            "options": {},
+            "options": {"authorization_acknowledged": True},
         }
         values.update(overrides)
         return ScanConfiguration(**values)
@@ -157,3 +160,34 @@ def scan_status_factory():
         values.update(overrides)
         return ScanStatus(**values)
     return create
+
+
+@pytest.fixture(autouse=True)
+def approved_test_targets(monkeypatch):
+    """Explicit test-only approval; the scanner remains mocked."""
+    monkeypatch.setenv(
+        "SCANNER_APPROVED_TARGETS",
+        "192.0.2.10,192.0.2.44,192.168.1.10",
+    )
+
+
+
+@pytest.fixture
+def approved_local_scan_target(monkeypatch):
+    """
+    Configure an explicitly approved loopback target
+    for KAN-105 and KAN-106 integration tests.
+
+    This fixture does not modify production settings.
+    """
+    monkeypatch.setenv(
+        "SCANNER_APPROVED_TARGETS",
+        "127.0.0.1",
+    )
+
+    # Use the allowlist-based authorization path rather
+    # than requiring a database approval for these tests.
+    monkeypatch.delenv(
+        "SCANNER_AUTHORIZATION_DB",
+        raising=False,
+    )
