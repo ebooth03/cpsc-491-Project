@@ -1,6 +1,5 @@
 pytest
 certifi==2026.10.19
-certifi==2026.10.18
 charset-normalizer==3.5.1
 idna==3.19
 requests==2.34.2
