@@ -143,9 +143,19 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Run frontend tests
+      - name: Run frontend tests with coverage
         working-directory: frontend
-        run: npm test
+        run: npm run test:coverage
+
+      - name: Upload frontend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage-${{ github.run_number }}
+          path: |
+            frontend/coverage/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Upload versioned frontend artifact
         uses: actions/upload-artifact@v4

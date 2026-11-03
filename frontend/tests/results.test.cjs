@@ -3,14 +3,13 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { JSDOM } = require("jsdom");
+const { createInstrumenter } = require("istanbul-lib-instrument");
+const { saveCoverage } = require("./coverage-helper.cjs");
 
 const frontendDir = path.resolve(__dirname, "..");
-const html = fs.readFileSync(
-    path.join(frontendDir, "index.html"), "utf8"
-);
-const app = fs.readFileSync(
-    path.join(frontendDir, "app.js"), "utf8"
-);
+const html = fs.readFileSync(path.join(frontendDir, "index.html"), "utf8");
+const instrumenter = createInstrumenter({coverageVariable: "__coverage__", compact: false});
+const app = instrumenter.instrumentSync(fs.readFileSync(path.join(frontendDir, "app.js"), "utf8"), "app.js");
 
 function setup(t) {
     const dom = new JSDOM(html, {
@@ -18,7 +17,13 @@ function setup(t) {
         runScripts: "outside-only"
     });
 
-    t.after(() => dom.window.close());
+    t.after(() => {
+    try {
+        saveCoverage(dom.window);
+    } finally {
+        dom.window.close();
+    }
+});
 
     // Initial history loading uses a controlled response.
     dom.window.fetch = async () => ({

@@ -3,10 +3,13 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { JSDOM } = require("jsdom");
+const { createInstrumenter } = require("istanbul-lib-instrument");
+const { saveCoverage } = require("./coverage-helper.cjs");
 
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-const app = fs.readFileSync(path.join(root, "app.js"), "utf8");
+const instrumenter = createInstrumenter({coverageVariable: "__coverage__", compact: false});
+const app = instrumenter.instrumentSync(fs.readFileSync(path.join(root, "app.js"), "utf8"), "app.js");
 
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
@@ -15,7 +18,13 @@ async function setup(t) {
         url: "http://localhost/",
         runScripts: "outside-only"
     });
-    t.after(() => dom.window.close());
+    t.after(() => {
+    try {
+        saveCoverage(window);
+    } finally {
+        window.close();
+    }
+});
 
     const window = dom.window;
     window.fetch = async () => ({
