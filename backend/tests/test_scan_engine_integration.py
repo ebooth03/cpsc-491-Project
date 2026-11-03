@@ -21,6 +21,7 @@ from scan_engine.models import (
     ScanResult as EngineScanResult,
     ServiceResult as EngineServiceResult,
 )
+from unittest.mock import patch
 
 
 def engine_result(status="completed", hosts=None, error=None):
@@ -384,3 +385,167 @@ def test_get_scan_engine_returns_real_engine():
     from scan_engine.engine import ScanEngine
 
     assert isinstance(scan_runner.get_scan_engine(), ScanEngine)
+
+@pytest.mark.skip(
+    reason="KAN-65: Second target (192.0.2.20) is not authorized "
+           "under the current scan allowlist. Pending coordination "
+           "with the authorization control owner."
+)
+def test_multiple_scans_keep_independent_results(
+    start_scan, client, fake_scan_engine
+):
+    """One failed scan must not overwrite another scan's results."""
+
+    # First scan succeeds.
+    fake_scan_engine.result = engine_result(
+        hosts=[
+            engine_host(
+                address="192.0.2.10",
+                services=[
+                    engine_service(
+                        22, "ssh", "OpenSSH", "9.0"
+                    )
+                ],
+            )
+        ]
+    )
+
+    _, first_id = start_scan(target="192.0.2.10")
+
+    # Second scan fails.
+    fake_scan_engine.result = engine_result(
+        status="failed",
+        error="Network error: connection failed",
+    )
+
+    _, second_id = start_scan(target="192.0.2.20")
+
+    # Verify unique scan identifiers.
+    assert first_id != second_id
+
+    # Retrieve both stored results.
+    first_result = client.get(
+        f"/scans/{first_id}/results"
+    ).json()
+
+    second_result = client.get(
+        f"/scans/{second_id}/results"
+    ).json()
+
+    # First scan must remain successful.
+    assert first_result["scan_id"] == first_id
+    assert first_result["target"] == "192.0.2.10"
+    assert first_result["status"] == "completed"
+    assert first_result["hosts"][0]["ports"][0]["port"] == 22
+
+    # Second scan must remain failed.
+    assert second_result["scan_id"] == second_id
+    assert second_result["target"] == "192.0.2.20"
+    assert second_result["status"] == "failed"
+    assert second_result["errors"] == [
+        scan_runner.NETWORK_ERROR_MESSAGE
+    ]
+
+    # Verify independent final statuses.
+    first_status = client.get(
+        f"/scans/{first_id}/status"
+    ).json()
+
+    second_status = client.get(
+        f"/scans/{second_id}/status"
+    ).json()
+
+    assert first_status["status"] == "completed"
+    assert first_status["progress_percent"] == 100
+
+    assert second_status["status"] == "failed"
+    assert second_status["progress_percent"] == 0
+
+    # Both scans should remain in history.
+    history = client.get("/scans").json()
+    history_ids = {scan["scan_id"] for scan in history}
+
+    assert first_id in history_ids
+    assert second_id in history_ids
+
+def test_malformed_engine_response_fails_safely(
+    start_scan, client, fake_scan_engine
+):
+    """
+    Malformed engine output must not crash the backend
+    or expose internal implementation details.
+    """
+
+    # Simulate an unexpected response from the scan engine.
+    with patch.object(fake_scan_engine, "scan", return_value=None) as mock_scan:
+        _, scan_id = start_scan(target="192.0.2.10")
+
+    mock_scan.assert_called_once()
+
+    # Retrieve the scan result and status.
+    result_response = client.get(
+        f"/scans/{scan_id}/results"
+    )
+
+    status_response = client.get(
+        f"/scans/{scan_id}/status"
+    )
+
+    assert result_response.status_code == 200
+    assert status_response.status_code == 200
+
+    result = result_response.json()
+    status = status_response.json()
+
+    # The malformed response must produce a failed scan.
+    assert result["status"] == "failed"
+    assert status["status"] == "failed"
+
+    # Verify that internal exception details are not exposed.
+    assert result["errors"] == [
+        scan_runner.UNEXPECTED_ERROR_MESSAGE
+    ]
+
+    assert status["message"] == (
+        scan_runner.UNEXPECTED_ERROR_MESSAGE
+    )
+
+    # A failed scan must not report completion progress.
+    assert status["progress_percent"] == 0
+
+    # The result must remain associated with the correct scan.
+    assert result["scan_id"] == scan_id
+    assert result["target"] == "192.0.2.10"
+    
+@pytest.mark.xfail(
+    reason="KAN-65: Backend treats unexpected engine status as completed; "
+           "pending backend developer fix.",
+    strict=True,
+)    
+def test_unexpected_engine_status_does_not_complete_scan(
+    start_scan, client, fake_scan_engine
+):
+    """
+    An unexpected engine status must not be reported
+    as a successfully completed scan.
+    """
+
+    fake_scan_engine.result = engine_result(
+        status="unexpected",
+        hosts=[]
+    )
+
+    _, scan_id = start_scan(target="192.0.2.10")
+
+    result = client.get(
+        f"/scans/{scan_id}/results"
+    ).json()
+
+    status = client.get(
+        f"/scans/{scan_id}/status"
+    ).json()
+
+    assert result["status"] == "failed"
+    assert status["status"] == "failed"
+    assert status["progress_percent"] == 0
+    assert result["errors"]
