@@ -10,3 +10,11 @@ __pycache__/
 frontend/node_modules/
 frontend/.nyc_output/
 frontend/coverage/
+
+# Local environment files containing credentials
+.env
+.env.*
+!.env.example
+
+# Local security scan output
+security-reports/
