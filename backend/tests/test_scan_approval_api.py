@@ -1,3 +1,5 @@
+import hashlib
+import json
 import sqlite3
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
@@ -18,13 +20,19 @@ def test_scan_requires_active_approval_and_records_both_decisions(
     payload["options"] = {"authorization_acknowledged": True}
     monkeypatch.setenv("SCANNER_AUTHORIZATION_DB", str(database))
     monkeypatch.setenv("SCANNER_APPROVED_TARGETS", target)
+    token = "test-audit-token"
+    digest = hashlib.sha256(token.encode()).hexdigest()
+    monkeypatch.setenv("SCANNER_AUTH_PRINCIPALS", json.dumps({
+        digest: {"id": "audit-test-operator", "can_scan": True},
+    }))
+    headers = {"Authorization": f"Bearer {token}"}
     approvals = TargetApprovalRepository(database)
     now = datetime.now(timezone.utc)
 
     approvals.save(TargetApproval(
         target, "test-admin", scope, now - timedelta(hours=1)
     ))
-    response = client.post("/scans", json=payload)
+    response = client.post("/scans", json=payload, headers=headers)
     assert response.status_code == 403, response.text
     assert fake_scan_engine.calls == []
     assert client.get("/scans").json() == []
@@ -32,7 +40,7 @@ def test_scan_requires_active_approval_and_records_both_decisions(
     approvals.save(TargetApproval(
         target, "test-admin", scope, now + timedelta(hours=1)
     ))
-    response = client.post("/scans", json=payload)
+    response = client.post("/scans", json=payload, headers=headers)
     assert response.status_code == 201, response.text
     assert len(fake_scan_engine.calls) == 1
 
@@ -44,6 +52,6 @@ def test_scan_requires_active_approval_and_records_both_decisions(
         """).fetchall()
 
     assert rows == [
-        (target, scope, "deny", "no_active_target_approval", None),
-        (target, scope, "allow", "active_target_approval", None),
+        (target, scope, "deny", "no_active_target_approval", "audit-test-operator"),
+        (target, scope, "allow", "active_target_approval", "audit-test-operator"),
     ]

@@ -23,7 +23,9 @@ def _require_configured_target(configuration: ScanConfiguration) -> None:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-def require_authorized_target(configuration: ScanConfiguration) -> None:
+def require_authorized_target(
+    configuration: ScanConfiguration, *, requester_id: str | None = None
+) -> None:
     """Check approval and record the decision before queuing a scan."""
     import os
     import sqlite3
@@ -68,6 +70,7 @@ def require_authorized_target(configuration: ScanConfiguration) -> None:
             scope=scope,
             outcome="deny" if rejection is not None else "allow",
             reason_code=reason,
+            requester_id=requester_id,
         ))
     except sqlite3.Error as exc:
         raise HTTPException(
