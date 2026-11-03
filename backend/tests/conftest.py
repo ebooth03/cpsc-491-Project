@@ -94,7 +94,7 @@ def scan_config_factory():
             "scan_type": "tcp",
             "scan_depth": "standard",
             "timeout": 5,
-            "options": {},
+            "options": {"authorization_acknowledged": True},
         }
         values.update(overrides)
         return ScanConfiguration(**values)
@@ -149,3 +149,12 @@ def scan_status_factory():
         values.update(overrides)
         return ScanStatus(**values)
     return create
+
+
+@pytest.fixture(autouse=True)
+def approved_test_targets(monkeypatch):
+    """Explicit test-only approval; the scanner remains mocked."""
+    monkeypatch.setenv(
+        "SCANNER_APPROVED_TARGETS",
+        "192.0.2.10,192.0.2.44,192.168.1.10",
+    )
