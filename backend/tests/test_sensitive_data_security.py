@@ -88,4 +88,3 @@ def test_internal_engine_error_is_not_returned_to_api_client(client, monkeypatch
     assert result["status"] == "failed"
     assert secret_marker not in result_response.text
     assert secret_marker not in client.get(f"/scans/{scan_id}/status").text
-    

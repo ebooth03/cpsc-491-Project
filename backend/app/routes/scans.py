@@ -1,3 +1,4 @@
+
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -11,6 +12,7 @@ from app.models.contracts import (
 from app.services.scan_authentication import require_scan_requester
 from app.services.scan_authorization import require_authorized_target
 from app.services.scan_runner import ScanEngine, get_scan_engine, run_scan
+from app.services.scan_limiter import scan_limiter
 
 
 router = APIRouter(
@@ -22,12 +24,6 @@ router = APIRouter(
 # =========================================================
 # Temporary in-memory storage
 # =========================================================
-#
-# This is NOT a database.
-# Scan history will be kept while the backend is running,
-# but it will disappear when the backend restarts.
-#
-# Later, this can be replaced by ScanRepository/database code.
 
 SCAN_RESULTS: dict[str, ScanResult] = {}
 SCAN_STATUSES: dict[str, ScanStatus] = {}
@@ -50,44 +46,66 @@ def create_scan(
     requester_id: str | None = Depends(require_scan_requester),
 ) -> ScanStatus:
 
-    require_authorized_target(configuration, requester_id=requester_id)
+    # Verify target authorization before reserving capacity.
+    require_authorized_target(
+        configuration,
+        requester_id=requester_id,
+    )
 
-    # Give every scan a unique ID
+    # Generate a unique scan ID.
     scan_id = f"scan-{uuid4().hex[:8]}"
 
-    now = datetime.now(timezone.utc)
+    # KAN-105: Reserve capacity before accepting the scan.
+    # The limit includes queued and running scans.
+    if not scan_limiter.try_acquire(scan_id):
+        raise HTTPException(
+            status_code=429,
+            detail="Maximum concurrent scan limit reached.",
+            headers={"Retry-After": "1"},
+        )
 
-    # Record the scan as queued so it appears in history right away.
-    SCAN_RESULTS[scan_id] = ScanResult(
-        scan_id=scan_id,
-        target=configuration.target,
-        start_time=now,
-        status="queued",
-    )
+    try:
+        now = datetime.now(timezone.utc)
 
-    status = ScanStatus(
-        scan_id=scan_id,
-        status="queued",
-        progress_percent=0,
-        current_host=configuration.target,
-        elapsed_time=0.0,
-        message="Scan queued.",
-        updated_at=now,
-    )
-    SCAN_STATUSES[scan_id] = status
+        # Record the accepted scan as queued.
+        SCAN_RESULTS[scan_id] = ScanResult(
+            scan_id=scan_id,
+            target=configuration.target,
+            start_time=now,
+            status="queued",
+        )
 
-    # Run the real scan engine after responding (KAN-102). The frontend
-    # polls GET /scans/{scan_id}/status until the scan finishes.
-    background_tasks.add_task(
-        run_scan,
-        scan_id,
-        configuration,
-        engine,
-        SCAN_RESULTS,
-        SCAN_STATUSES,
-    )
+        status = ScanStatus(
+            scan_id=scan_id,
+            status="queued",
+            progress_percent=0,
+            current_host=configuration.target,
+            elapsed_time=0.0,
+            message="Scan queued.",
+            updated_at=now,
+        )
 
-    return status
+        SCAN_STATUSES[scan_id] = status
+
+        # Schedule the scan and pass its reservation limiter.
+        background_tasks.add_task(
+            run_scan,
+            scan_id,
+            configuration,
+            engine,
+            SCAN_RESULTS,
+            SCAN_STATUSES,
+            scan_limiter,
+        )
+
+        return status
+
+    except Exception:
+        # Release capacity if scan setup or scheduling fails.
+        SCAN_RESULTS.pop(scan_id, None)
+        SCAN_STATUSES.pop(scan_id, None)
+        scan_limiter.release(scan_id)
+        raise
 
 
 # =========================================================
@@ -101,10 +119,8 @@ def create_scan(
 )
 def list_scans() -> list[ScanResult]:
 
-    # Convert dictionary values into a list
     scans = list(SCAN_RESULTS.values())
 
-    # Sort newest first
     scans.sort(
         key=lambda scan: scan.start_time,
         reverse=True,

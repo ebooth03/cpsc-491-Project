@@ -20,11 +20,19 @@ from scan_engine.models import (
 )
 
 
+from app.services.scan_limiter import ScanLimiter
+
+
 @pytest.fixture(autouse=True)
 def isolated_scan_storage(monkeypatch):
-    """Give every backend test fresh in-memory storage."""
+    """Give each backend test fresh storage and limiter state."""
     monkeypatch.setattr(scans_routes, "SCAN_RESULTS", {})
     monkeypatch.setattr(scans_routes, "SCAN_STATUSES", {})
+    monkeypatch.setattr(
+        scans_routes,
+        "scan_limiter",
+        ScanLimiter(max_scans=2),
+    )
 
 
 class FakeScanEngine:
@@ -160,4 +168,26 @@ def approved_test_targets(monkeypatch):
     monkeypatch.setenv(
         "SCANNER_APPROVED_TARGETS",
         "192.0.2.10,192.0.2.44,192.168.1.10",
+    )
+
+
+
+@pytest.fixture
+def approved_local_scan_target(monkeypatch):
+    """
+    Configure an explicitly approved loopback target
+    for KAN-105 and KAN-106 integration tests.
+
+    This fixture does not modify production settings.
+    """
+    monkeypatch.setenv(
+        "SCANNER_APPROVED_TARGETS",
+        "127.0.0.1",
+    )
+
+    # Use the allowlist-based authorization path rather
+    # than requiring a database approval for these tests.
+    monkeypatch.delenv(
+        "SCANNER_AUTHORIZATION_DB",
+        raising=False,
     )
