@@ -69,6 +69,23 @@ class ScanConfiguration(BaseModel):
         return str(address)
 
 
+    @field_validator("options")
+    @classmethod
+    def validate_options(
+        cls,
+        value: dict[str, Any]
+    ) -> dict[str, Any]:
+
+        if value:
+            raise ValueError(
+                "Unsupported scan options. "
+                "No additional scan options are currently supported."
+            )
+
+        return value
+
+
+
 class PortResult(BaseModel):
     port: int = Field(strict=True, ge=1, le=65535)
     protocol: str
