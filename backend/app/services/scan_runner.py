@@ -163,6 +163,9 @@ def run_scan(
 
     try:
         engine_result = engine.scan(
+            authorization_acknowledged=configuration.options.get(
+                "authorization_acknowledged", False
+            ),
             target=configuration.target,
             start_port=configuration.port_range.start,
             end_port=configuration.port_range.end,
