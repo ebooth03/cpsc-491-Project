@@ -50,7 +50,7 @@ def create_scan(
     requester_id: str | None = Depends(require_scan_requester),
 ) -> ScanStatus:
 
-    require_authorized_target(configuration)
+    require_authorized_target(configuration, requester_id=requester_id)
 
     # Give every scan a unique ID
     scan_id = f"scan-{uuid4().hex[:8]}"
