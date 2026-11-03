@@ -1,3 +1,4 @@
+from scan_engine.authorization import require_authorized_target
 from scan_engine.host_discovery import discover_host
 from scan_engine.models import HostResult, ScanResult
 from scan_engine.service_detector import detect_service
@@ -20,6 +21,8 @@ class ScanEngine:
         start_port: int,
         end_port: int,
         timeout: float = 0.5,
+        *,
+        authorization_acknowledged: bool = False,
     ) -> ScanResult:
         try:
             # Validate input before performing network operations.
@@ -29,6 +32,8 @@ class ScanEngine:
                 end_port=end_port,
                 timeout=timeout,
             )
+
+            require_authorized_target(target, authorization_acknowledged)
 
             # Determine whether the target appears reachable.
             host_state = discover_host(

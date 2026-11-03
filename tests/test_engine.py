@@ -10,7 +10,7 @@ def test_scan_returns_failed_for_invalid_target():
         target="999.999.1.1",
         start_port=1,
         end_port=100,
-        timeout=0.5,
+        timeout=0.5, authorization_acknowledged=True,
     )
 
     assert result.status == "failed"
@@ -25,7 +25,7 @@ def test_scan_returns_failed_for_invalid_port_range():
         target="127.0.0.1",
         start_port=1000,
         end_port=500,
-        timeout=0.5,
+        timeout=0.5, authorization_acknowledged=True,
     )
 
     assert result.status == "failed"
@@ -45,7 +45,7 @@ def test_scan_returns_unknown_host_when_not_reachable(
         target="127.0.0.1",
         start_port=1,
         end_port=100,
-        timeout=0.5,
+        timeout=0.5, authorization_acknowledged=True,
     )
 
     assert result.status == "completed"
@@ -70,7 +70,7 @@ def test_scan_returns_reachable_host_with_no_open_ports(
         target="127.0.0.1",
         start_port=1,
         end_port=100,
-        timeout=0.5,
+        timeout=0.5, authorization_acknowledged=True,
     )
 
     assert result.status == "completed"
@@ -113,7 +113,7 @@ def test_scan_detects_services_on_open_ports(
         target="127.0.0.1",
         start_port=1,
         end_port=100,
-        timeout=0.5,
+        timeout=0.5, authorization_acknowledged=True,
     )
 
     assert result.status == "completed"
@@ -146,7 +146,7 @@ def test_scan_passes_correct_values_to_tcp_scanner(
         target="127.0.0.1",
         start_port=20,
         end_port=100,
-        timeout=1.0,
+        timeout=1.0, authorization_acknowledged=True,
     )
 
     mock_scan_tcp_range.assert_called_once_with(
@@ -176,7 +176,7 @@ def test_unreachable_host_skips_tcp_scan(
         target="127.0.0.1",
         start_port=1,
         end_port=100,
-        timeout=0.5,
+        timeout=0.5, authorization_acknowledged=True,
     )
 
     assert result.status == "completed"
@@ -200,7 +200,7 @@ def test_no_open_ports_skips_service_detection(
     result = ScanEngine().scan(
         target="127.0.0.1",
         start_port=1,
-        end_port=100,
+        end_port=100, authorization_acknowledged=True,
     )
 
     assert result.status == "completed"
@@ -230,7 +230,7 @@ def test_every_open_port_is_sent_to_service_detector(
     result = ScanEngine().scan(
         target="127.0.0.1",
         start_port=1,
-        end_port=500,
+        end_port=500, authorization_acknowledged=True,
     )
 
     assert result.status == "completed"
@@ -256,7 +256,7 @@ def test_host_discovery_receives_correct_parameters(
         target="192.168.1.10",
         start_port=20,
         end_port=100,
-        timeout=1.5,
+        timeout=1.5, authorization_acknowledged=True,
     )
 
     mock_discover_host.assert_called_once_with(
@@ -277,7 +277,7 @@ def test_network_error_during_tcp_scan_returns_failed(
     result = ScanEngine().scan(
         target="127.0.0.1",
         start_port=1,
-        end_port=100,
+        end_port=100, authorization_acknowledged=True,
     )
 
     assert result.status == "failed"
@@ -294,7 +294,7 @@ def test_network_error_during_host_discovery_returns_failed(
     result = ScanEngine().scan(
         target="127.0.0.1",
         start_port=1,
-        end_port=100,
+        end_port=100, authorization_acknowledged=True,
     )
 
     assert result.status == "failed"
@@ -312,7 +312,7 @@ def test_invalid_timeout_prevents_network_operations(
         target="127.0.0.1",
         start_port=1,
         end_port=100,
-        timeout=0,
+        timeout=0, authorization_acknowledged=True,
     )
 
     assert result.status == "failed"
@@ -328,10 +328,17 @@ def test_failed_scan_returns_structured_error():
         target="invalid-ip",
         start_port=1,
         end_port=100,
-        timeout=0.5,
+        timeout=0.5, authorization_acknowledged=True,
     )
 
     assert result.status == "failed"
     assert result.error is not None
     assert isinstance(result.error, str)
     assert result.hosts == []
+
+import pytest as authorization_pytest
+
+
+@authorization_pytest.fixture(autouse=True)
+def approved_scan_targets(monkeypatch):
+    monkeypatch.setenv("SCANNER_APPROVED_TARGETS", "127.0.0.1,192.168.1.10")

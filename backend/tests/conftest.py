@@ -42,7 +42,10 @@ class FakeScanEngine:
         self.error = None
         self.on_scan = None
 
-    def scan(self, target, start_port, end_port, timeout=0.5):
+    def scan(
+        self, target, start_port, end_port, timeout=0.5,
+        *, authorization_acknowledged=False,
+    ):
         self.calls.append({
             "target": target,
             "start_port": start_port,

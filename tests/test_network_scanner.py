@@ -397,7 +397,7 @@ class TestLoopbackScanning:
     ):
         results = Scanner().scan(
             LOOPBACK,
-            [open_local_port, closed_local_port],
+            [open_local_port, closed_local_port], authorization_acknowledged=True,
         )
 
         states = {r["port"]: r["state"] for r in results}
@@ -429,7 +429,7 @@ class TestScanEngineLoopback:
             target=LOOPBACK,
             start_port=open_local_port,
             end_port=open_local_port,
-            timeout=FAST_TIMEOUT,
+            timeout=FAST_TIMEOUT, authorization_acknowledged=True,
         )
 
         assert result.status == "completed"
@@ -454,7 +454,7 @@ class TestScanEngineLoopback:
             target=LOOPBACK,
             start_port=closed_local_port,
             end_port=closed_local_port,
-            timeout=FAST_TIMEOUT,
+            timeout=FAST_TIMEOUT, authorization_acknowledged=True,
         )
 
         assert result.status == "completed"
@@ -474,7 +474,7 @@ class TestScanEngineErrorHandling:
     )
     def test_network_error_in_discovery_returns_failed(self, _mock):
         result = ScanEngine().scan(
-            "10.0.0.5", 1, 10, timeout=FAST_TIMEOUT
+            "10.0.0.5", 1, 10, timeout=FAST_TIMEOUT, authorization_acknowledged=True
         )
 
         assert result.status == "failed"
@@ -492,7 +492,7 @@ class TestScanEngineErrorHandling:
     )
     def test_network_error_during_port_scan_returns_failed(self, _d, _s):
         result = ScanEngine().scan(
-            "10.0.0.5", 1, 10, timeout=FAST_TIMEOUT
+            "10.0.0.5", 1, 10, timeout=FAST_TIMEOUT, authorization_acknowledged=True
         )
 
         assert result.status == "failed"
@@ -505,7 +505,7 @@ class TestScanEngineErrorHandling:
         self, mock_discover, mock_scan
     ):
         result = ScanEngine().scan(
-            "10.0.0.5", 1, 10, timeout=0
+            "10.0.0.5", 1, 10, timeout=0, authorization_acknowledged=True
         )
 
         assert result.status == "failed"
@@ -518,7 +518,7 @@ class TestScanEngineErrorHandling:
         self, _mock_discover, mock_scan
     ):
         result = ScanEngine().scan(
-            "10.0.0.5", 1, 10, timeout=FAST_TIMEOUT
+            "10.0.0.5", 1, 10, timeout=FAST_TIMEOUT, authorization_acknowledged=True
         )
 
         assert result.status == "completed"
@@ -537,8 +537,15 @@ class TestScanEngineErrorHandling:
     )
     def test_non_ipv4_targets_fail_validation(self, target):
         result = ScanEngine().scan(
-            target, 1, 10, timeout=FAST_TIMEOUT
+            target, 1, 10, timeout=FAST_TIMEOUT, authorization_acknowledged=True
         )
 
         assert result.status == "failed"
         assert result.error is not None
+
+import pytest as authorization_pytest
+
+
+@authorization_pytest.fixture(autouse=True)
+def approved_scan_targets(monkeypatch):
+    monkeypatch.setenv("SCANNER_APPROVED_TARGETS", "127.0.0.1,10.0.0.5")

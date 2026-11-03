@@ -23,8 +23,10 @@ class ScanWorkflow:
         self.matcher = matcher or VulnerabilityMatcher()
         self.storage = storage or InMemoryStorage()
 
-    def run(self, target, ports, vulnerabilities):
-        scan_results = self.scanner.scan(target, ports)
+    def run(self, target, ports, vulnerabilities, *, authorization_acknowledged=False):
+        scan_results = self.scanner.scan(
+            target, ports, authorization_acknowledged=authorization_acknowledged
+        )
 
         final_results = []
 
