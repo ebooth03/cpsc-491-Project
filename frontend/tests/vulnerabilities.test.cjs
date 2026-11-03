@@ -3,17 +3,26 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { JSDOM } = require("jsdom");
+const { createInstrumenter } = require("istanbul-lib-instrument");
+const { saveCoverage } = require("./coverage-helper.cjs");
 
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-const app = fs.readFileSync(path.join(root, "app.js"), "utf8");
+const instrumenter = createInstrumenter({coverageVariable: "__coverage__", compact: false});
+const app = instrumenter.instrumentSync(fs.readFileSync(path.join(root, "app.js"), "utf8"), "app.js");
 
 async function setup(t) {
     const dom = new JSDOM(html, {
         url: "http://localhost/",
         runScripts: "outside-only"
     });
-    t.after(() => dom.window.close());
+    t.after(() => {
+    try {
+        saveCoverage(dom.window);
+    } finally {
+        dom.window.close();
+    }
+});
     const window = dom.window;
     window.fetch = async () => ({ ok: true, json: async () => [] });
     window.console.log = () => {};

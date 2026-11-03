@@ -8,3 +8,5 @@ __pycache__/
 
 # Frontend dependencies
 frontend/node_modules/
+frontend/.nyc_output/
+frontend/coverage/
