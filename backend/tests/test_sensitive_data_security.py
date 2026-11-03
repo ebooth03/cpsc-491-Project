@@ -58,7 +58,8 @@ def test_scan_results_require_authentication(client):
     assert response.status_code == 401
 
 
-def test_internal_engine_error_is_not_returned_to_api_client(client):
+def test_internal_engine_error_is_not_returned_to_api_client(client, monkeypatch):
+    monkeypatch.setenv("SCANNER_APPROVED_TARGETS", "192.0.2.10")
     secret_marker = "SYNTHETIC_SECRET_DO_NOT_USE_491"
 
     class FailingEngine:
@@ -76,7 +77,7 @@ def test_internal_engine_error_is_not_returned_to_api_client(client):
             "scan_type": "tcp",
             "scan_depth": "quick",
             "timeout": 1,
-            "options": {},
+            "options": {"authorization_acknowledged": True},
         },
     )
     assert response.status_code == 201
