@@ -8,7 +8,7 @@ SCAN_CONFIG = {
     "scan_type": "tcp",
     "scan_depth": "standard",
     "timeout": 5,
-    "options": {},
+    "options": {"authorization_acknowledged": True},
 }
 
 

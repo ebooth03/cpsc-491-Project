@@ -89,13 +89,13 @@ def test_api_rejects_unsupported_options():
     assert response.status_code == 422
 
 
-def test_api_accepts_empty_options():
+def test_api_rejects_empty_options_without_acknowledgement():
     payload = valid_scan_payload()
 
     with TestClient(app) as client:
         response = client.post("/scans", json=payload)
 
-    assert response.status_code == 201
+    assert response.status_code == 403, response.text
 
 
 def test_unsupported_options_never_reach_scan_engine(
@@ -123,8 +123,8 @@ def test_unsupported_options_never_reach_scan_engine(
     assert fake_scan_engine.calls == []
 
 
-def test_empty_options_allow_scan_engine_execution(
-    client, fake_scan_engine
+def test_authorized_options_allow_scan_engine_execution(
+    client, fake_scan_engine, monkeypatch
 ):
     """
     KAN-104: Verify valid scan requests continue
@@ -132,11 +132,13 @@ def test_empty_options_allow_scan_engine_execution(
     """
 
     payload = valid_scan_payload()
+    payload["options"] = {"authorization_acknowledged": True}
+    monkeypatch.setenv("SCANNER_APPROVED_TARGETS", payload["target"])
 
     response = client.post("/scans", json=payload)
 
     # A valid scan request should be accepted.
-    assert response.status_code == 201
+    assert response.status_code == 201, response.text
 
     # The fake scan engine should execute exactly once.
     assert len(fake_scan_engine.calls) == 1
