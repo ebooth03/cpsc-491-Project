@@ -8,6 +8,7 @@ from app.models.contracts import (
     ScanResult,
     ScanStatus,
 )
+from app.services.scan_authentication import require_scan_requester
 from app.services.scan_authorization import require_authorized_target
 from app.services.scan_runner import ScanEngine, get_scan_engine, run_scan
 
@@ -46,6 +47,7 @@ def create_scan(
     configuration: ScanConfiguration,
     background_tasks: BackgroundTasks,
     engine: ScanEngine = Depends(get_scan_engine),
+    requester_id: str | None = Depends(require_scan_requester),
 ) -> ScanStatus:
 
     require_authorized_target(configuration)

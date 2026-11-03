@@ -174,7 +174,10 @@ scanForm.addEventListener("submit", async function (event) {
 
                 headers: {
                     "Content-Type":
-                        "application/json"
+                        "application/json",
+                ...((token) => token ? { Authorization: `Bearer ${token}` } : {})(
+                    document.getElementById("scanAccessToken")?.value.trim()
+                )
                 },
 
                 body:
