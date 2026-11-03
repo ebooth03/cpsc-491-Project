@@ -912,7 +912,7 @@ function displayResults(result) {
                             <tr>
 
                                 <td>
-                                    ${port.port}
+                                    ${escapeHtml(port.port)}
                                 </td>
 
                                 <td>
