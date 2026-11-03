@@ -20,11 +20,19 @@ from scan_engine.models import (
 )
 
 
+from app.services.scan_limiter import ScanLimiter
+
+
 @pytest.fixture(autouse=True)
 def isolated_scan_storage(monkeypatch):
-    """Give every backend test fresh in-memory storage."""
+    """Give each backend test fresh storage and limiter state."""
     monkeypatch.setattr(scans_routes, "SCAN_RESULTS", {})
     monkeypatch.setattr(scans_routes, "SCAN_STATUSES", {})
+    monkeypatch.setattr(
+        scans_routes,
+        "scan_limiter",
+        ScanLimiter(max_scans=2),
+    )
 
 
 class FakeScanEngine:

@@ -17,6 +17,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from app.services.scan_limiter import ScanLimiter
 
 from app.models.contracts import (
     HostResult,
@@ -127,79 +128,104 @@ def _summary_message(result: ScanResult) -> str:
     return f"Scan completed: {open_ports} open port(s) found."
 
 
+
 def run_scan(
     scan_id: str,
     configuration: ScanConfiguration,
     engine: ScanEngine,
     results: dict[str, ScanResult],
     statuses: dict[str, ScanStatus],
+    limiter: ScanLimiter | None = None,
 ) -> None:
     """
-    Execute one scan and record its result and status.
+    Execute a scan and record its results and status.
 
-    Runs as a FastAPI background task after POST /scans has responded.
-    Never raises: any failure is recorded as a failed scan so the API
-    keeps serving other requests.
+    KAN-105: Release the concurrency reservation after
+    execution, including successful scans and failures.
+
+    The limiter parameter is optional to preserve
+    compatibility with existing direct run_scan() calls.
     """
 
-    start_time = results[scan_id].start_time
-    started = time.monotonic()
-
-    statuses[scan_id] = ScanStatus(
-        scan_id=scan_id,
-        status="running",
-        progress_percent=0,
-        current_host=configuration.target,
-        elapsed_time=0.0,
-        message=(
-            f"Scanning ports {configuration.port_range.start}-"
-            f"{configuration.port_range.end} on {configuration.target}."
-        ),
-        updated_at=_now(),
-    )
-    results[scan_id] = results[scan_id].model_copy(
-        update={"status": "running"}
-    )
-
     try:
-        engine_result = engine.scan(
-            target=configuration.target,
-            start_port=configuration.port_range.start,
-            end_port=configuration.port_range.end,
-            timeout=configuration.timeout,
-        )
-        result = convert_engine_result(
+        start_time = results[scan_id].start_time
+        started = time.monotonic()
+
+        statuses[scan_id] = ScanStatus(
             scan_id=scan_id,
-            configuration=configuration,
-            engine_result=engine_result,
-            start_time=start_time,
-            end_time=_now(),
-        )
-        if engine_result.status == "failed":
-            logger.warning(
-                "Scan %s: scan engine reported a failure: %s",
-                scan_id,
-                engine_result.error,
-            )
-    except Exception:
-        # Log the details for developers; never expose them to clients.
-        logger.exception("Scan %s failed in the scan engine.", scan_id)
-        result = ScanResult(
-            scan_id=scan_id,
-            target=configuration.target,
-            start_time=start_time,
-            end_time=_now(),
-            status="failed",
-            errors=[UNEXPECTED_ERROR_MESSAGE],
+            status="running",
+            progress_percent=0,
+            current_host=configuration.target,
+            elapsed_time=0.0,
+            message=(
+                f"Scanning ports {configuration.port_range.start}-"
+                f"{configuration.port_range.end} "
+                f"on {configuration.target}."
+            ),
+            updated_at=_now(),
         )
 
-    results[scan_id] = result
-    statuses[scan_id] = ScanStatus(
-        scan_id=scan_id,
-        status=result.status,
-        progress_percent=100 if result.status == "completed" else 0,
-        current_host=configuration.target,
-        elapsed_time=round(time.monotonic() - started, 3),
-        message=_summary_message(result),
-        updated_at=_now(),
-    )
+        results[scan_id] = results[scan_id].model_copy(
+            update={"status": "running"}
+        )
+
+        try:
+            engine_result = engine.scan(
+                target=configuration.target,
+                start_port=configuration.port_range.start,
+                end_port=configuration.port_range.end,
+                timeout=configuration.timeout,
+            )
+
+            result = convert_engine_result(
+                scan_id=scan_id,
+                configuration=configuration,
+                engine_result=engine_result,
+                start_time=start_time,
+                end_time=_now(),
+            )
+
+            if engine_result.status == "failed":
+                logger.warning(
+                    "Scan %s: scan engine reported a failure: %s",
+                    scan_id,
+                    engine_result.error,
+                )
+
+        except Exception:
+            # Log internal details without exposing them to clients.
+            logger.exception(
+                "Scan %s failed in the scan engine.",
+                scan_id,
+            )
+
+            result = ScanResult(
+                scan_id=scan_id,
+                target=configuration.target,
+                start_time=start_time,
+                end_time=_now(),
+                status="failed",
+                errors=[UNEXPECTED_ERROR_MESSAGE],
+            )
+
+        # Publish final results before final status.
+        results[scan_id] = result
+
+        statuses[scan_id] = ScanStatus(
+            scan_id=scan_id,
+            status=result.status,
+            progress_percent=(
+                100 if result.status == "completed" else 0
+            ),
+            current_host=configuration.target,
+            elapsed_time=round(
+                time.monotonic() - started, 3
+            ),
+            message=_summary_message(result),
+            updated_at=_now(),
+        )
+
+    finally:
+        # KAN-105: Always release reserved capacity.
+        if limiter is not None:
+            limiter.release(scan_id)

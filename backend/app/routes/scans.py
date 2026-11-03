@@ -9,6 +9,7 @@ from app.models.contracts import (
     ScanStatus,
 )
 from app.services.scan_runner import ScanEngine, get_scan_engine, run_scan
+from app.services.scan_limiter import scan_limiter
 
 
 router = APIRouter(
@@ -36,6 +37,7 @@ SCAN_STATUSES: dict[str, ScanStatus] = {}
 # Create a new scan
 # =========================================================
 
+
 @router.post(
     "",
     response_model=ScanStatus,
@@ -47,42 +49,61 @@ def create_scan(
     engine: ScanEngine = Depends(get_scan_engine),
 ) -> ScanStatus:
 
-    # Give every scan a unique ID
+    # Give every scan a unique ID.
     scan_id = f"scan-{uuid4().hex[:8]}"
 
-    now = datetime.now(timezone.utc)
+    # KAN-105: Reserve a slot before accepting the request.
+    # The reservation covers both queued and running scans.
+    if not scan_limiter.try_acquire(scan_id):
+        raise HTTPException(
+            status_code=429,
+            detail="Maximum concurrent scan limit reached.",
+            headers={"Retry-After": "1"},
+        )
 
-    # Record the scan as queued so it appears in history right away.
-    SCAN_RESULTS[scan_id] = ScanResult(
-        scan_id=scan_id,
-        target=configuration.target,
-        start_time=now,
-        status="queued",
-    )
+    try:
+        now = datetime.now(timezone.utc)
 
-    status = ScanStatus(
-        scan_id=scan_id,
-        status="queued",
-        progress_percent=0,
-        current_host=configuration.target,
-        elapsed_time=0.0,
-        message="Scan queued.",
-        updated_at=now,
-    )
-    SCAN_STATUSES[scan_id] = status
+        # Record the accepted scan as queued.
+        SCAN_RESULTS[scan_id] = ScanResult(
+            scan_id=scan_id,
+            target=configuration.target,
+            start_time=now,
+            status="queued",
+        )
 
-    # Run the real scan engine after responding (KAN-102). The frontend
-    # polls GET /scans/{scan_id}/status until the scan finishes.
-    background_tasks.add_task(
-        run_scan,
-        scan_id,
-        configuration,
-        engine,
-        SCAN_RESULTS,
-        SCAN_STATUSES,
-    )
+        status = ScanStatus(
+            scan_id=scan_id,
+            status="queued",
+            progress_percent=0,
+            current_host=configuration.target,
+            elapsed_time=0.0,
+            message="Scan queued.",
+            updated_at=now,
+        )
 
-    return status
+        SCAN_STATUSES[scan_id] = status
+
+        # Pass the limiter to the background runner so the
+        # reservation can be released when execution finishes.
+        background_tasks.add_task(
+            run_scan,
+            scan_id,
+            configuration,
+            engine,
+            SCAN_RESULTS,
+            SCAN_STATUSES,
+            scan_limiter,
+        )
+
+        return status
+
+    except Exception:
+        # Release the reservation if setup or scheduling fails.
+        SCAN_RESULTS.pop(scan_id, None)
+        SCAN_STATUSES.pop(scan_id, None)
+        scan_limiter.release(scan_id)
+        raise
 
 
 # =========================================================
