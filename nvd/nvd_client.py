@@ -6,8 +6,9 @@ class NVDClient:
 
     BASE_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
-    def __init__(self, api_key=None):
+    def __init__(self, api_key=None, timeout=10):
         self.api_key = api_key
+        self.timeout = timeout
 
     def search_cves(self, software, version=None):
         """Search the NVD for CVEs matching software and optionally a version."""
@@ -32,7 +33,7 @@ class NVDClient:
                 self.BASE_URL,
                 params=params,
                 headers=headers,
-                timeout=10
+                timeout=self.timeout
             )
 
             response.raise_for_status()

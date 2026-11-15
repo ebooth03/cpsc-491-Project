@@ -1,3 +1,4 @@
+
 import unittest
 from unittest.mock import patch
 
@@ -94,7 +95,7 @@ class TestNVDClient(unittest.TestCase):
             mock_response = mock_get.return_value
             mock_response.raise_for_status.side_effect = (
                 requests.exceptions.HTTPError("500 Server Error")
-        )
+            )
 
             result = self.client.search_cves("apache", "2.4.49")
 
@@ -156,7 +157,7 @@ class TestNVDClient(unittest.TestCase):
                     }
                 }
             ]
-        }   
+        }
 
         results = self.client.parse_cves(sample_data)
 
@@ -188,6 +189,23 @@ class TestNVDClient(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertIsNone(results[0]["cvss_score"])
         self.assertIsNone(results[0]["severity"])
+
+    def test_search_cves_uses_configured_timeout(self):
+        """Verify that the client passes a custom timeout to requests."""
+
+        client = NVDClient(timeout=30)
+
+        with patch("nvd.nvd_client.requests.get") as mock_get:
+            mock_get.return_value.json.return_value = {
+                "vulnerabilities": []
+            }
+
+            client.search_cves("Apache HTTP Server", "2.4.49")
+
+            self.assertEqual(
+                mock_get.call_args.kwargs["timeout"],
+                30
+            )
 
 
 if __name__ == "__main__":
