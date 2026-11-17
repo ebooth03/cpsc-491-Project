@@ -386,11 +386,6 @@ def test_get_scan_engine_returns_real_engine():
 
     assert isinstance(scan_runner.get_scan_engine(), ScanEngine)
 
-@pytest.mark.skip(
-    reason="KAN-65: Second target (192.0.2.20) is not authorized "
-           "under the current scan allowlist. Pending coordination "
-           "with the authorization control owner."
-)
 def test_multiple_scans_keep_independent_results(
     start_scan, client, fake_scan_engine
 ):
@@ -418,7 +413,7 @@ def test_multiple_scans_keep_independent_results(
         error="Network error: connection failed",
     )
 
-    _, second_id = start_scan(target="192.0.2.20")
+    _, second_id = start_scan(target="192.0.2.44")
 
     # Verify unique scan identifiers.
     assert first_id != second_id
@@ -440,7 +435,7 @@ def test_multiple_scans_keep_independent_results(
 
     # Second scan must remain failed.
     assert second_result["scan_id"] == second_id
-    assert second_result["target"] == "192.0.2.20"
+    assert second_result["target"] == "192.0.2.44"
     assert second_result["status"] == "failed"
     assert second_result["errors"] == [
         scan_runner.NETWORK_ERROR_MESSAGE
@@ -517,13 +512,9 @@ def test_malformed_engine_response_fails_safely(
     assert result["scan_id"] == scan_id
     assert result["target"] == "192.0.2.10"
     
-@pytest.mark.xfail(
-    reason="KAN-65: Backend treats unexpected engine status as completed; "
-           "pending backend developer fix.",
-    strict=True,
-)    
+@pytest.mark.parametrize("unexpected_status", [None, "", "Completed", 42, "unexpected"])
 def test_unexpected_engine_status_does_not_complete_scan(
-    start_scan, client, fake_scan_engine
+    start_scan, client, fake_scan_engine, caplog, unexpected_status
 ):
     """
     An unexpected engine status must not be reported
@@ -531,7 +522,7 @@ def test_unexpected_engine_status_does_not_complete_scan(
     """
 
     fake_scan_engine.result = engine_result(
-        status="unexpected",
+        status=unexpected_status,
         hosts=[]
     )
 
@@ -548,4 +539,7 @@ def test_unexpected_engine_status_does_not_complete_scan(
     assert result["status"] == "failed"
     assert status["status"] == "failed"
     assert status["progress_percent"] == 0
-    assert result["errors"]
+    assert result["errors"] == [scan_runner.ENGINE_FAILURE_MESSAGE]
+    assert status["message"] == scan_runner.ENGINE_FAILURE_MESSAGE
+    assert "scan engine returned status" in caplog.text
+    assert repr(unexpected_status) in caplog.text
