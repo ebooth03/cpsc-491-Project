@@ -1,0 +1,11 @@
+
+title = "CPSC 491 Secret Scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "custom-github-token"
+description = "Detect GitHub-style personal access tokens"
+regex = '''ghp_[A-Za-z0-9]{36}'''
+keywords = ["ghp_"]
