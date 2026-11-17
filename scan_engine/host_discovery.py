@@ -1,3 +1,4 @@
+import errno
 import socket
 
 
@@ -23,7 +24,8 @@ def discover_host(target: str, timeout: float = 0.5) -> str:
 
                 result = sock.connect_ex((target, port))
 
-                if result == 0:
+                # A refused connection is still evidence of a responding host.
+                if result in (0, errno.ECONNREFUSED):
                     return "reachable"
 
         except OSError:

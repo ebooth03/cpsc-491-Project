@@ -285,19 +285,19 @@ class TestDiscoverHostMocked:
             assert discover_host("10.0.0.5") == "reachable"
 
     def test_reachable_when_only_https_responds(self):
-        factory, _ = make_fake_socket({443: 0})
+        factory, _ = make_fake_socket({22: errno.ETIMEDOUT, 80: errno.ETIMEDOUT, 443: 0})
 
         with patch("scan_engine.host_discovery.socket.socket", factory):
             assert discover_host("10.0.0.5") == "reachable"
 
     def test_unknown_when_no_probe_port_responds(self):
-        factory, _ = make_fake_socket({})
+        factory, _ = make_fake_socket({22: errno.ETIMEDOUT, 80: errno.ETIMEDOUT, 443: errno.ETIMEDOUT})
 
         with patch("scan_engine.host_discovery.socket.socket", factory):
             assert discover_host("10.0.0.5") == "unknown"
 
     def test_probes_22_80_443_in_order(self):
-        factory, created = make_fake_socket({})
+        factory, created = make_fake_socket({22: errno.ETIMEDOUT, 80: errno.ETIMEDOUT, 443: errno.ETIMEDOUT})
 
         with patch("scan_engine.host_discovery.socket.socket", factory):
             discover_host("10.0.0.5")
@@ -310,7 +310,7 @@ class TestDiscoverHostMocked:
         assert probed == [22, 80, 443]
 
     def test_stops_probing_after_first_success(self):
-        factory, created = make_fake_socket({80: 0})
+        factory, created = make_fake_socket({22: errno.ETIMEDOUT, 80: 0})
 
         with patch("scan_engine.host_discovery.socket.socket", factory):
             assert discover_host("10.0.0.5") == "reachable"
@@ -342,7 +342,7 @@ class TestDiscoverHostMocked:
             assert discover_host("10.0.0.5") == "unknown"
 
     def test_applies_requested_timeout(self):
-        factory, created = make_fake_socket({})
+        factory, created = make_fake_socket({22: errno.ETIMEDOUT, 80: errno.ETIMEDOUT, 443: errno.ETIMEDOUT})
 
         with patch("scan_engine.host_discovery.socket.socket", factory):
             discover_host("10.0.0.5", timeout=2.0)
