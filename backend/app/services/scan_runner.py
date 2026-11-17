@@ -119,7 +119,7 @@ def convert_engine_result(
                 )
             )
 
-    failed = engine_result.status == "failed"
+    failed = engine_result.status != "completed"
 
     errors = (
         [public_engine_error(engine_result.error)]
@@ -223,10 +223,11 @@ def run_scan(
                 end_time=_now(),
             )
 
-            if engine_result.status == "failed":
+            if result.status == "failed":
                 logger.warning(
-                    "Scan %s: scan engine reported a failure: %s",
+                    "Scan %s: scan engine returned status %r; error: %s",
                     scan_id,
+                    engine_result.status,
                     engine_result.error,
                 )
 
